@@ -34,3 +34,5 @@ GitHub: Repositorio remoto y colaboración en equipo.
 Postman: Pruebas de endpoints de la API.
 Node.js y npm: Gestión de paquetes para el frontend.
 Composer: Gestión de dependencias en Laravel.
+
+## Avance de Laboratorio - Jhan Carlos Vela Rojas
