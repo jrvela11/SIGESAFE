@@ -15,6 +15,8 @@ return new class extends Migration
             $table->id('id_categoria'); 
             $table->string('nombre_categoria', 100);
             $table->text('descripcion')->nullable();
+            $table->boolean('estado')->default(true);
+            $table->softDeletes();
             $table->timestamps();
         });
     }
