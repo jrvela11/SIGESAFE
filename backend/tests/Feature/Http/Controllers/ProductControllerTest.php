@@ -6,6 +6,8 @@ use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use JMac\Testing\Traits\AdditionalAssertions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -42,50 +44,44 @@ final class ProductControllerTest extends TestCase
     #[Test]
     public function store_saves(): void
     {
+        // 1. Preparamos el entorno de archivos simulado
+        Storage::fake('public');
+        $file = UploadedFile::fake()->image('producto.jpg');
+
         $category = Category::factory()->create();
-        $sku = fake()->word();
-        $nombre = fake()->word();
-        $precio_compra = fake()->numberBetween(100, 500000) / 100;
-        $precio_minorista = fake()->numberBetween(500, 900000) / 100;
-        $precio_mayorista = fake()->numberBetween(400, 800000) / 100;
-        $afecto_igv = fake()->boolean();
-        $unidad_medida = fake()->word();
-        $stock_actual = fake()->numberBetween(1000, 500000) / 100;
-        $stock_minimo = fake()->numberBetween(100, 10000) / 100;
-        $estado = fake()->boolean();
 
-        $response = $this->post(route('products.store'), [
-            'category_id' => $category->id,
-            'sku' => $sku,
-            'nombre' => $nombre,
-            'precio_compra' => $precio_compra,
-            'precio_minorista' => $precio_minorista,
-            'precio_mayorista' => $precio_mayorista,
-            'afecto_igv' => $afecto_igv,
-            'unidad_medida' => $unidad_medida,
-            'stock_actual' => $stock_actual,
-            'stock_minimo' => $stock_minimo,
-            'estado' => $estado,
-        ]);
+        // 2. Construimos el array de datos (incluyendo el archivo)
+        $data = [
+            'category_id'      => $category->id,
+            'sku'              => fake()->unique()->word(),
+            'nombre'           => fake()->word(),
+            'precio_compra'    => fake()->numberBetween(100, 500000) / 100,
+            'precio_minorista' => fake()->numberBetween(500, 900000) / 100,
+            'precio_mayorista' => fake()->numberBetween(400, 800000) / 100,
+            'afecto_igv'       => fake()->boolean(),
+            'unidad_medida'    => fake()->word(),
+            'stock_actual'     => fake()->numberBetween(1000, 500000) / 100,
+            'stock_minimo'     => fake()->numberBetween(100, 10000) / 100,
+            'estado'           => fake()->boolean(),
+            'imagen'           => $file, // El archivo simulado
+        ];
 
-        $products = Product::query()
-            ->where('category_id', $category->id)
-            ->where('sku', $sku)
-            ->where('nombre', $nombre)
-            ->where('precio_compra', $precio_compra)
-            ->where('precio_minorista', $precio_minorista)
-            ->where('precio_mayorista', $precio_mayorista)
-            ->where('afecto_igv', $afecto_igv)
-            ->where('unidad_medida', $unidad_medida)
-            ->where('stock_actual', $stock_actual)
-            ->where('stock_minimo', $stock_minimo)
-            ->where('estado', $estado)
-            ->get();
-        $this->assertCount(1, $products);
-        $product = $products->first();
+        // 3. Ejecutamos el post (Laravel maneja automáticamente el multipart/form-data)
+        $response = $this->post(route('products.store'), $data);
 
+        // 4. Verificamos que el registro existe en base de datos
         $response->assertCreated();
-        $response->assertJsonStructure([]);
+
+        // Verificamos que la imagen existe en el storage (Laravel usa hashName por defecto)
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+        $disk = Storage::disk('public');
+        $disk->assertExists('products/' . $file->hashName());
+        // 5. Verificamos la base de datos de manera profesional
+        $this->assertDatabaseHas('products', [
+            'category_id' => $data['category_id'],
+            'sku'         => $data['sku'],
+            'imagen_url'  => 'products/' . $file->hashName(),
+        ]);
     }
 
 

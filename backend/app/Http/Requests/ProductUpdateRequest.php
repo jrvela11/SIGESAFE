@@ -17,7 +17,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * @bodyParam unidad_medida string required Unidad de empaque o venta. Example: Saco
  * @bodyParam stock_actual number required Control de stock actual. Example: 85.50
  * @bodyParam stock_minimo number required Alerta de stock mínimo. Example: 5.00
- * @bodyParam imagen_url string URL opcional de la imagen. Example: https://sigesafe.edu.pe/storage/products/cafe-tostado.jpg
+ * @bodyParam imagen file El nuevo archivo de imagen (si se desea reemplazar). Max: 2MB. Example: cafe-lavado.jpg
  * @bodyParam estado boolean required Estado del producto en el catálogo. Example: true
  */
 class ProductUpdateRequest extends FormRequest
@@ -75,7 +75,7 @@ class ProductUpdateRequest extends FormRequest
             'stock_minimo' => ['required', 'numeric', 'between:-99999999.99,99999999.99'],
 
             // URL opcional de la imagen. @status optional @example https://sigesafe.edu.pe/storage/products/cafe-tostado.jpg
-            'imagen_url' => ['nullable', 'string'],
+            'imagen'     => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
 
             // Estado del producto en el catálogo. @example true
             'estado' => ['required', 'boolean'],
