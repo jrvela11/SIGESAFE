@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'decolecta' => [
+            'token'    => env('DECOLECTA_API_TOKEN'),
+            'base_url' => 'https://api.decolecta.com/v1',
+    ],
+
+    'whatsapp' => [
+        'token' => env('WHATSAPP_TOKEN'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+    ],
+
 ];
