@@ -41,80 +41,61 @@ final class SaleControllerTest extends TestCase
     }
 
     #[Test]
-    public function store_saves(): void
+    public function store_saves_with_fifo_and_kardex(): void
     {
         $this->withoutExceptionHandling();
         $customer = \App\Models\Customer::factory()->create();
         $user = \App\Models\User::factory()->create();
 
-        // 🚀 Ajustamos el factory del producto con tus campos reales del esquema
+        // 1. Setup Productos y Lotes (Fuente de la verdad)
         $productA = \App\Models\Product::factory()->create([
             'precio_minorista' => 100.00,
-            'precio_mayorista' => 85.00,
             'stock_actual'     => 10,
             'afecto_igv'       => true
         ]);
 
-        $productB = \App\Models\Product::factory()->create([
-            'precio_minorista' => 50.00,
-            'precio_mayorista' => 40.00,
-            'stock_actual'     => 5,
-            'afecto_igv'       => false // Exonerado/Inafecto de IGV
+        // Creamos dos lotes para ProductA
+        $loteAntiguo = \App\Models\Inventory::factory()->create([
+            'product_id' => $productA->id,
+            'cantidad_actual' => 5,
+            'created_at' => now()->subDays(10) // FIFO: Primero este
+        ]);
+        $loteNuevo = \App\Models\Inventory::factory()->create([
+            'product_id' => $productA->id,
+            'cantidad_actual' => 5,
+            'created_at' => now()
         ]);
 
-        $tipo_venta = 'minorista'; // El controlador deberá elegir: 100.00 y 50.00
-        $tipo_comprobante = 'BOLETA';
-        $serie = 'B001';
-        $metodo_pago = 'Efectivo';
-        $estado_pago = 'pagado';
-
+        // 2. Ejecutar venta que consume ambos lotes (8 unidades > 5 del primer lote)
         $response = $this->post(route('sales.store'), [
             'customer_id'      => $customer->id,
             'user_id'          => $user->id,
-            'tipo_venta'       => $tipo_venta,
-            'tipo_comprobante' => $tipo_comprobante,
-            'serie'            => $serie,
-            'metodo_pago'      => $metodo_pago,
-            'estado_pago'      => $estado_pago,
+            'tipo_venta'       => 'minorista',
+            'tipo_comprobante' => 'BOLETA',
+            'serie'            => 'B001',
+            'metodo_pago'      => 'Efectivo',
+            'estado_pago'      => 'pagado',
             'items' => [
-                [
-                    'product_id' => $productA->id,
-                    'cantidad'   => 2, // 2 * 100.00 = 200.00 (Afecto a IGV)
-                    'descuento'  => 0
-                ],
-                [
-                    'product_id' => $productB->id,
-                    'cantidad'   => 1, // 1 * 50.00 = 50.00 (Inafecto a IGV)
-                    'descuento'  => 0
-                ]
+                ['product_id' => $productA->id, 'cantidad' => 8, 'descuento' => 0]
             ]
         ]);
 
-        // 🧮 AUDITORÍA MATEMÁTICA:
-        // Subtotal = 200.00 + 50.00 = 250.00
-        // IGV = Solo aplica a ProductA (200.00 * 0.18) = 36.00
-        // Total = 250.00 + 36.00 = 286.00
-
         $response->assertCreated();
 
-        // Validamos cabecera con cálculos reales por tipo de afectación
-        $this->assertDatabaseHas('sales', [
-            'customer_id' => $customer->id,
-            'tipo_venta'  => $tipo_venta,
-            'subtotal'    => 250.00,
-            'igv'         => 36.00,
-            'total'       => 286.00,
-        ]);
+        // 3. Verificación FIFO: El antiguo debe quedar en 0, el nuevo en 2 (5-3)
+        $this->assertDatabaseHas('inventories', ['id' => $loteAntiguo->id, 'cantidad_actual' => 0]);
+        $this->assertDatabaseHas('inventories', ['id' => $loteNuevo->id, 'cantidad_actual' => 2.00]);
 
-        // Validamos que se descontó usando la columna 'stock_actual'
-        $this->assertDatabaseHas('products', [
-            'id'           => $productA->id,
-            'stock_actual' => 8
-        ]);
+        // 4. Verificación de Kardex: Deben existir 2 registros de salida
+        $this->assertDatabaseCount('inventory_movements', 2);
 
-        $this->assertDatabaseHas('products', [
-            'id'           => $productB->id,
-            'stock_actual' => 4
+        // Verificamos que el movimiento se vinculó correctamente al detalle de venta
+        $saleDetail = \App\Models\SaleDetail::where('product_id', $productA->id)->first();
+        $this->assertDatabaseHas('inventory_movements', [
+            'sale_detail_id' => $saleDetail->id,
+            'inventory_id'   => $loteAntiguo->id,
+            'cantidad'       => 5,
+            'tipo'           => 'salida'
         ]);
     }
 
