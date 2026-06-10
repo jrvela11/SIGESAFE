@@ -30,3 +30,6 @@ Route::apiResource('suppliers', App\Http\Controllers\SupplierController::class)-
 
 
 Route::apiResource('suppliers', App\Http\Controllers\SupplierController::class);
+
+
+Route::apiResource('purchases', App\Http\Controllers\PurchaseController::class);

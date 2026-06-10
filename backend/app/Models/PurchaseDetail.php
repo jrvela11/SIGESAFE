@@ -6,9 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class InventoryMovement extends Model
+class PurchaseDetail extends Model
 {
     use HasFactory;
+
+    /**
+     * Indicates if the model should be timestamped.
+     *
+     * @var bool
+     */
+    public $timestamps = false;
 
     /**
      * The attributes that are mass assignable.
@@ -16,12 +23,11 @@ class InventoryMovement extends Model
      * @var array
      */
     protected $fillable = [
-        'inventory_id',
-        'sale_detail_id',
-        'purchase_detail_id',
-        'tipo',
+        'purchase_id',
+        'product_id',
         'cantidad',
-        'descripcion',
+        'precio_compra',
+        'subtotal',
     ];
 
     /**
@@ -33,20 +39,21 @@ class InventoryMovement extends Model
     {
         return [
             'id' => 'integer',
-            'inventory_id' => 'integer',
-            'sale_detail_id' => 'integer',
+            'purchase_id' => 'integer',
+            'product_id' => 'integer',
             'cantidad' => 'decimal:2',
-            'created_at' => 'timestamp',
+            'precio_compra' => 'decimal:2',
+            'subtotal' => 'decimal:2',
         ];
     }
 
-    public function inventory(): BelongsTo
+    public function purchase(): BelongsTo
     {
-        return $this->belongsTo(Inventory::class);
+        return $this->belongsTo(Purchase::class);
     }
 
-    public function saleDetail(): BelongsTo
+    public function product(): BelongsTo
     {
-        return $this->belongsTo(SaleDetail::class);
+        return $this->belongsTo(Product::class);
     }
 }
