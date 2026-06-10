@@ -11,15 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('inventory_movements', function (Blueprint $table) {
+        Schema::disableForeignKeyConstraints();
+
+        Schema::create('purchase_details', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('inventory_id');
-            $table->foreignId('sale_detail_id')->nullable();
-            $table->enum('tipo', ["entrada","salida"]);
+            $table->foreignId('purchase_id');
+            $table->foreignId('product_id')->constrained();
             $table->decimal('cantidad', 10, 2);
-            $table->string('descripcion');
-            $table->timestamps();
+            $table->decimal('precio_compra', 10, 2);
+            $table->decimal('subtotal', 10, 2);
         });
+
+        Schema::enableForeignKeyConstraints();
     }
 
     /**
@@ -27,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('inventory_movements');
+        Schema::dropIfExists('purchase_details');
     }
 };
