@@ -22,11 +22,4 @@ Route::apiResource('users', App\Http\Controllers\UserController::class);
 
 Route::apiResource('sales', App\Http\Controllers\SaleController::class)->except('update');
 
-
-Route::apiResource('suppliers', App\Http\Controllers\SupplierController::class)->except('destroy');
-
-
-Route::apiResource('suppliers', App\Http\Controllers\SupplierController::class)->except('destroy');
-
-
 Route::apiResource('suppliers', App\Http\Controllers\SupplierController::class);
