@@ -17,7 +17,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * @bodyParam unidad_medida string required Unidad de despacho del almacén (Saco 69kg, Quintal QQ, Unidad). Example: Quintal
  * @bodyParam stock_actual number required Stock físico actual en los almacenes de acopio. Example: 120.50
  * @bodyParam stock_minimo number required Umbral de alerta de reposición mínima en almacén. Example: 10.00
- * @bodyParam imagen_url string Ruta de la imagen del producto guardada en el storage. Example: imagen.jpg
+ * @bodyParam imagen file El archivo de imagen (jpeg, png, webp). Max: 2MB. Example: cafe-lavado.jpg
  * @bodyParam estado boolean required Estado de disponibilidad del producto en el catálogo. Example: true
  */
 class ProductStoreRequest extends FormRequest
@@ -73,7 +73,8 @@ class ProductStoreRequest extends FormRequest
             'stock_minimo' => ['required', 'numeric', 'min:0'],
 
             // Ruta de la imagen del producto guardada en el storage. @status optional @example https://sigesafe.edu.pe/storage/products/cafe-lavado.jpg
-            'imagen_url' => ['nullable', 'string'],
+            // Cambia esto en tu array de reglas:
+            'imagen' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
 
             // Estado de disponibilidad del producto en el catálogo. @example true
             'estado' => ['required', 'boolean'],

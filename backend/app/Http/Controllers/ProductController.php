@@ -9,6 +9,7 @@ use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -21,7 +22,20 @@ class ProductController extends Controller
 
     public function store(ProductStoreRequest $request)
     {
-        $product = Product::create($request->validated());
+        // 1. Obtenemos todos los datos validados
+        $data = $request->validated();
+
+        // 2. Procesamos la imagen si existe
+        if ($request->hasFile('imagen')) {
+            $path = $request->file('imagen')->store('products', 'public');
+            $data['imagen_url'] = $path; // Guardamos la ruta en el campo de la DB
+        }
+
+        // 3. Eliminamos el campo 'imagen' del array, ya que no existe en la tabla products
+        unset($data['imagen']);
+
+        // 4. Creamos el producto
+        $product = Product::create($data);
 
         return new ProductResource($product);
     }
@@ -33,7 +47,22 @@ class ProductController extends Controller
 
     public function update(ProductUpdateRequest $request, Product $product)
     {
-        $product->update($request->validated());
+        $data = $request->validated();
+
+        if ($request->hasFile('imagen')) {
+            // 1. Eliminar la imagen anterior si existe
+            if ($product->imagen_url) {
+                Storage::disk('public')->delete($product->imagen_url);
+            }
+
+            // 2. Guardar la nueva
+            $data['imagen_url'] = $request->file('imagen')->store('products', 'public');
+        }
+
+        // 3. Limpiar el array de la clave 'imagen' antes de actualizar
+        unset($data['imagen']);
+
+        $product->update($data);
 
         return new ProductResource($product);
     }
