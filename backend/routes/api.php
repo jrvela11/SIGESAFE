@@ -20,4 +20,12 @@ Route::apiResource('products', App\Http\Controllers\ProductController::class);
 Route::apiResource('users', App\Http\Controllers\UserController::class);
 
 
-Route::apiResource('sales', App\Http\Controllers\SaleController::class)->except('update');
+Route::apiResource('sales', App\Http\Controllers\SaleController::class);
+
+
+Route::apiResource('suppliers', App\Http\Controllers\SupplierController::class);
+
+Route::apiResource('purchases', App\Http\Controllers\PurchaseController::class);
+
+Route::get('/kardex', [\App\Http\Controllers\KardexController::class, 'index']);
+

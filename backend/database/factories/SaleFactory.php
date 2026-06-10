@@ -8,25 +8,25 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 
 class SaleFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     */
     public function definition(): array
     {
+        $tipoComprobante = fake()->randomElement(["Boleta", "Factura"]);
+        $serie = $tipoComprobante === 'Factura' ? fake()->bothify('F00#') : fake()->bothify('B00#');
+
         return [
             'customer_id' => Customer::factory(),
             'user_id' => User::factory(),
             'tipo_venta' => fake()->randomElement(["minorista","mayorista"]),
-            'tipo_comprobante' => fake()->regexify('[A-Za-z0-9]{50}'),
-            'serie' => fake()->regexify('[A-Za-z0-9]{4}'),
-            'correlativo' => fake()->regexify('[A-Za-z0-9]{10}'),
-            'subtotal' => fake()->randomFloat(2, 0, 99999999.99),
-            'igv' => fake()->randomFloat(2, 0, 99999999.99),
-            'total' => fake()->randomFloat(2, 0, 99999999.99),
-            'metodo_pago' => fake()->word(),
-            'estado_pago' => fake()->word(),
-            'fecha_venta' => fake()->dateTime(),
-            'estado' => fake()->boolean(),
+            'tipo_comprobante' => $tipoComprobante,
+            'serie' => $serie,
+            'correlativo' => fake()->unique()->numerify('######'),
+            'subtotal' => fake()->randomFloat(2, 50, 1000),
+            'igv' => fake()->randomFloat(2, 9, 180),
+            'total' => fake()->randomFloat(2, 59, 1180),
+            'metodo_pago' => fake()->randomElement(['Efectivo', 'Tarjeta', 'Yape', 'Plin']),
+            'estado_pago' => fake()->randomElement(['Pagado', 'Pendiente']),
+            'fecha_venta' => fake()->dateTimeThisYear(),
+            'estado' => fake()->boolean(95),
         ];
     }
 }
