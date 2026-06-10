@@ -33,3 +33,9 @@ Route::apiResource('suppliers', App\Http\Controllers\SupplierController::class);
 
 
 Route::apiResource('purchases', App\Http\Controllers\PurchaseController::class);
+
+
+Route::apiResource('carriers', App\Http\Controllers\CarrierController::class);
+
+
+Route::apiResource('shipments', App\Http\Controllers\ShipmentController::class);
