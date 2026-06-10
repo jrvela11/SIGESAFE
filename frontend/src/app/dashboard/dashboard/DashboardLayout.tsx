@@ -30,7 +30,6 @@ const MENU_GROUPS = [
     items: [
       { name: "Productos", icon: Package, path: "/productos" },
       { name: "Categorías", icon: Tags, path: "/categorias" },
-      { name: "Trazabilidad", icon: Route, path: "/trazabilidad" },
     ]
   },
   {

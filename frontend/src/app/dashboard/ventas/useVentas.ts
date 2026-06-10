@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import api from "../../../lib/api";
 
@@ -22,6 +22,10 @@ export const useVentas = () => {
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<"todos" | "pagado" | "anulado">("todos");
+  
+  // Paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const itemsPorPagina = 10;
 
   const fetchVentas = async () => {
     try {
@@ -41,23 +45,41 @@ export const useVentas = () => {
     fetchVentas();
   }, []);
 
-  const ventasFiltradas = ventas.filter((v) => {
-    const coincideBusqueda = 
-      v.comprobante.toLowerCase().includes(busqueda.toLowerCase()) ||
-      v.cliente.toLowerCase().includes(busqueda.toLowerCase());
-    
-    const coincideEstado = filtroEstado === "todos" || v.estado_pago === filtroEstado;
+  // Resetear la página a 1 cuando los filtros cambien
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, filtroEstado]);
 
-    return coincideBusqueda && coincideEstado;
-  });
+  // Filtrado memoizado
+  const ventasFiltradas = useMemo(() => {
+    return ventas.filter((v) => {
+      const coincideBusqueda = 
+        v.comprobante.toLowerCase().includes(busqueda.toLowerCase()) ||
+        v.cliente.toLowerCase().includes(busqueda.toLowerCase());
+      
+      const coincideEstado = filtroEstado === "todos" || v.estado_pago === filtroEstado;
+
+      return coincideBusqueda && coincideEstado;
+    });
+  }, [ventas, busqueda, filtroEstado]);
+
+  // Lógica de Paginación
+  const indiceUltimoItem = paginaActual * itemsPorPagina;
+  const indicePrimerItem = indiceUltimoItem - itemsPorPagina;
+  const ventasPaginadas = ventasFiltradas.slice(indicePrimerItem, indiceUltimoItem);
+  const totalPaginas = Math.ceil(ventasFiltradas.length / itemsPorPagina);
 
   return {
-    ventas: ventasFiltradas,
+    ventas: ventasPaginadas, // Retornamos solo las ventas de la página actual
+    ventasTotales: ventasFiltradas, // Útil para cálculos de KPIs globales
     cargando,
     busqueda,
     setBusqueda,
     filtroEstado,
     setFiltroEstado,
-    fetchVentas
+    fetchVentas,
+    paginaActual,
+    setPaginaActual,
+    totalPaginas,
   };
 };
