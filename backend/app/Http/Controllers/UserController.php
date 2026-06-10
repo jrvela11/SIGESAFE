@@ -2,102 +2,45 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use App\Models\Empleado;
-use App\Http\Requests\StoreUserRequest;
-use App\Http\Requests\UpdateUserRequest;
+use App\Http\Requests\UserStoreRequest;
+use App\Http\Requests\UserUpdateRequest;
+use App\Http\Resources\UserCollection;
 use App\Http\Resources\UserResource;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class UserController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('empleado')->withTrashed()->orderBy('id', 'desc')->get();
-        
-        return response()->json([
-            'success' => true,
-            'data'    => UserResource::collection($users)
-        ], 200);
+        $users = User::all();
+
+        return new UserCollection($users);
     }
 
-    public function store(StoreUserRequest $request)
-    {
-        $userData = $request->safe()->except(['empleado_id']);
-        
-        $user = User::create($userData);
+    public function store(UserStoreRequest $request){
+        $user = User::create($request->validated());
 
-        if ($request->filled('empleado_id')) {
-            Empleado::where('id', $request->empleado_id)->update(['user_id' => $user->id]);
-        }
-
-        $user->load('empleado');
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Usuario creado exitosamente',
-            'data'    => new UserResource($user)
-        ], 201);
+        return new UserResource($user);
     }
 
-    public function show(User $user)
+    public function show(Request $request, User $user)
     {
-        $user->load('empleado');
-
-        return response()->json([
-            'success' => true,
-            'data'    => new UserResource($user)
-        ], 200);
+        return new UserResource($user);
     }
 
-    public function update(UpdateUserRequest $request, User $user)
+    public function update(UserUpdateRequest $request, User $user)
     {
-        $userData = $request->safe()->except(['empleado_id']);
+        $user->update($request->validated());
 
-        // Limpiamos el password si viene vacío para no sobreescribirlo
-        if (empty($userData['password'])) {
-            unset($userData['password']);
-        }
-
-        $user->update($userData);
-
-        if ($request->has('empleado_id')) {
-            Empleado::where('user_id', $user->id)->update(['user_id' => null]);
-            
-            if ($request->filled('empleado_id')) {
-                Empleado::where('id', $request->empleado_id)->update(['user_id' => $user->id]);
-            }
-        }
-
-        $user->load('empleado');
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Usuario actualizado con éxito',
-            'data'    => new UserResource($user)
-        ], 200);
+        return new UserResource($user);
     }
 
-    public function destroy(User $user)
+    public function destroy(Request $request, User $user): Response
     {
-        $user->update(['is_active' => false]);
         $user->delete();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Usuario desactivado'
-        ], 200);
-    }
-
-    public function restaurar(int $id)
-    {
-        $user = User::withTrashed()->findOrFail($id);
-        
-        $user->restore();
-        $user->update(['is_active' => true]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Usuario reactivado con éxito'
-        ], 200);
+        return response()->noContent();
     }
 }

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class User extends Model
+class Customer extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -16,22 +16,17 @@ class User extends Model
      * @var array
      */
     protected $fillable = [
-        'name',
+        'tipo_documento',
+        'numero_documento',
+        'nombre',
+        'apellido',
         'email',
-        'email_verified_at',
-        'password',
-        'role',
-        'is_active',
-    ];
-
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
+        'telefono',
+        'direccion',
+        'distrito',
+        'provincia',
+        'departamento',
+        'estado',
     ];
 
     /**
@@ -43,8 +38,7 @@ class User extends Model
     {
         return [
             'id' => 'integer',
-            'email_verified_at' => 'timestamp',
-            'is_active' => 'boolean',
+            'estado' => 'boolean',
         ];
     }
 }
