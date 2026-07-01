@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -10,6 +11,8 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 
+
+Route::get('/reports/export-pdf', [ReportController::class, 'exportPdf']);
 Route::get('/customers/verify-document', [CustomerController::class, 'verifyDocument']);
 Route::apiResource('customers', App\Http\Controllers\CustomerController::class);
 
@@ -38,3 +41,4 @@ Route::apiResource('carriers', App\Http\Controllers\CarrierController::class);
 
 
 Route::apiResource('shipments', App\Http\Controllers\ShipmentController::class);
+
