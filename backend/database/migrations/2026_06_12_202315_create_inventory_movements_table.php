@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('inventory_id');
             $table->foreignId('sale_detail_id')->nullable();
-            $table->enum('tipo', ["entrada","salida"]);
+            $table->foreignId('purchase_detail_id')->nullable()->constrained()->onDelete('set null');
+            $table->enum('tipo', ["entrada", "salida"]);
             $table->decimal('cantidad', 10, 2);
             $table->string('descripcion');
             $table->timestamps();

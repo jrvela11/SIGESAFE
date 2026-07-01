@@ -112,16 +112,6 @@ class PurchaseController extends Controller
         return new PurchaseResource($purchase);
     }
 
-    public function update(Request $request, Purchase $purchase)
-    {
-        // Cambiamos el estado a false (Anulada)
-        $purchase->update([
-            'estado' => $request->input('estado', false)
-        ]);
-
-
-        return new PurchaseResource($purchase);
-    }
 
     public function destroy(Request $request, Purchase $purchase): Response
     {
