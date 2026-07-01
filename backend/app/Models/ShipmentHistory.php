@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Customer extends Model
+class ShipmentHistory extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -16,19 +16,11 @@ class Customer extends Model
      * @var array
      */
     protected $fillable = [
-        'tipo_documento',
-        'numero_documento',
-        'nombre',
-        'apellido',
-        'email',
-        'telefono',
-        'direccion',
-        'distrito',
-        'provincia',
-        'departamento',
-        'latitud',
-        'longitud',
+        'shipment_id',
         'estado',
+        'ubicacion',
+        'descripcion',
+        'estado_registro',
     ];
 
     /**
@@ -40,7 +32,13 @@ class Customer extends Model
     {
         return [
             'id' => 'integer',
-            'estado' => 'boolean',
+            'shipment_id' => 'integer',
+            'estado_registro' => 'boolean',
         ];
+    }
+
+    public function shipment(): BelongsTo
+    {
+        return $this->belongsTo(Shipment::class);
     }
 }

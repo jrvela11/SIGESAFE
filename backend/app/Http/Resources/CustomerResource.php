@@ -25,6 +25,9 @@ class CustomerResource extends JsonResource
             'provincia' => $this->provincia,
             'departamento' => $this->departamento,
             'estado' => $this->estado,
+
+            'latitud' => $this->latitud !== null ? (float) $this->latitud : null,
+            'longitud' => $this->longitud !== null ? (float) $this->longitud : null,
         ];
     }
 }
