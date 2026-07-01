@@ -1,133 +1,109 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import api from "../../../lib/api";
 import type { Producto } from "../productos/useProductos";
-import { useConfiguracion } from "../../dashboard/configuracion/useConfiguracion";
- 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
- 
+
 export interface ItemCarrito extends Producto {
   cantidadVenta: number;
   descuento: number;
 }
- 
-export interface FormEnvio {
-  requiere_envio: boolean;
-  tipo_envio: "local" | "interregional";
-  direccion_destino: string;
-  agencia_transporte_id: string;
-  repartidor_nombre: string;
-  costo_envio: string;
-  fecha_estimada_llegada: string;
-}
- 
-const FORM_ENVIO_INICIAL: FormEnvio = {
-  requiere_envio: false,
-  tipo_envio: "local",
-  direccion_destino: "",
-  agencia_transporte_id: "",
-  repartidor_nombre: "",
-  costo_envio: "",
-  fecha_estimada_llegada: "",
-};
- 
-export interface Agencia {
+
+export interface ClientePos {
   id: number;
   nombre: string;
-  estado: boolean;
+  apellido: string | null;
+  numero_documento: string | null;
 }
- 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
- 
+
 export const usePuntoVenta = () => {
-  const empresa = useConfiguracion();
- 
-  // ── Catálogo ───────────────────────────────────────────────────────────────
+  const empresa = { nombre_empresa: "San Felipe", ruc_empresa: "20123456789", direccion_empresa: "Sede Principal" };
+
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [categorias, setCategorias] = useState<{ id: number; nombre_categoria: string }[]>([]);
-  const [agencias, setAgencias] = useState<Agencia[]>([]);
+  const [categorias, setCategorias] = useState<{ id: number; nombre: string }[]>([]);
+  const [clientesLista, setClientesLista] = useState<ClientePos[]>([]);
   const [cargando, setCargando] = useState(true);
- 
-  // ── Filtros y paginación ───────────────────────────────────────────────────
+
   const [busqueda, setBusqueda] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState<string>("");
   const [pagina, setPagina] = useState(1);
   const POR_PAGINA = 8;
- 
-  // ── Carrito ────────────────────────────────────────────────────────────────
+
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [procesando, setProcesando] = useState(false);
   const [ultimaVenta, setUltimaVenta] = useState<Record<string, unknown> | null>(null);
- 
-  // ── Formulario de venta ────────────────────────────────────────────────────
+
+  // ── NUEVO: Estados para el buscador de clientes ──
+  const [clienteSearch, setClienteSearch] = useState("");
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+
   const [formularioVenta, setFormularioVenta] = useState({
-    cliente_id: "",
-    numero_documento: "",
-    nombre_cliente: "",
+    customer_id: "",
     tipo_venta: "minorista",
     tipo_comprobante: "Boleta",
     serie: "B001",
     metodo_pago: "Efectivo",
+    estado_pago: "pagado", 
+    monto_abonado: 0, // NUEVO: Monto que deja a cuenta
   });
- 
-  // ── Formulario de envío (opcional) ────────────────────────────────────────
-  const [formEnvio, setFormEnvio] = useState<FormEnvio>(FORM_ENVIO_INICIAL);
-  const [erroresEnvio, setErroresEnvio] = useState<Record<string, string>>({});
- 
-  // ─── Carga inicial ────────────────────────────────────────────────────────
+
   useEffect(() => {
     const fetchInicial = async () => {
       try {
-        const [prodRes, catRes, agRes] = await Promise.all([
-          api.get("/productos"),
-          api.get("/categorias"),
-          api.get("/agencias-transporte"),
+        const [prodRes, catRes, cliRes] = await Promise.all([
+          fetch("/api/products", { headers: { Accept: "application/json" } }),
+          fetch("/api/categories", { headers: { Accept: "application/json" } }),
+          fetch("/api/customers", { headers: { Accept: "application/json" } }),
         ]);
-        if (prodRes.data.success) {
-          setProductos(
-            prodRes.data.data.filter((p: Producto) => p.estado && p.stock_actual > 0)
-          );
+
+        if (prodRes.ok) {
+          const jsonProd = await prodRes.json();
+          setProductos(jsonProd.data.filter((p: Producto) => p.estado && p.stock_actual > 0));
         }
-        if (catRes.data.success) {
-          setCategorias(catRes.data.data.filter((c: { estado: boolean }) => c.estado));
+        if (catRes.ok) {
+          const jsonCat = await catRes.json();
+          setCategorias(jsonCat.data.filter((c: any) => c.estado));
         }
-        if (agRes.data.success) {
-          setAgencias(agRes.data.data.filter((a: Agencia) => a.estado));
+        if (cliRes.ok) {
+          const jsonCli = await cliRes.json();
+          setClientesLista(jsonCli.data.filter((c: any) => c.estado));
         }
       } catch {
-        toast.error("Error al cargar catálogo.");
+        toast.error("Error al cargar datos del sistema.");
       } finally {
         setCargando(false);
       }
     };
     fetchInicial();
   }, []);
- 
-  // ─── Filtrado y paginación de productos ───────────────────────────────────
+
   const productosFiltrados = useMemo(() => {
     let lista = productos;
     if (busqueda) {
       const t = busqueda.toLowerCase();
-      lista = lista.filter(
-        p => p.nombre.toLowerCase().includes(t) || p.sku.toLowerCase().includes(t)
-      );
+      lista = lista.filter(p => p.nombre.toLowerCase().includes(t) || p.sku.toLowerCase().includes(t));
     }
     if (categoriaFiltro) {
-      lista = lista.filter(p => p.categoria_id.toString() === categoriaFiltro);
+      lista = lista.filter(p => p.category_id.toString() === categoriaFiltro);
     }
     return lista;
   }, [productos, busqueda, categoriaFiltro]);
- 
+
   const totalPaginas = Math.max(1, Math.ceil(productosFiltrados.length / POR_PAGINA));
   const paginaAjustada = Math.min(pagina, totalPaginas);
-  const productosPaginados = productosFiltrados.slice(
-    (paginaAjustada - 1) * POR_PAGINA,
-    paginaAjustada * POR_PAGINA
-  );
- 
+  const productosPaginados = productosFiltrados.slice((paginaAjustada - 1) * POR_PAGINA, paginaAjustada * POR_PAGINA);
+
   useEffect(() => { setPagina(1); }, [busqueda, categoriaFiltro]);
- 
-  // ─── Carrito ──────────────────────────────────────────────────────────────
+
+  // ── BUSCADOR DE CLIENTES FILTRADO ──
+  const clientesFiltrados = useMemo(() => {
+    if (!clienteSearch) return clientesLista;
+    const lower = clienteSearch.toLowerCase();
+    return clientesLista.filter(c => 
+      c.nombre.toLowerCase().includes(lower) || 
+      (c.apellido && c.apellido.toLowerCase().includes(lower)) ||
+      (c.numero_documento && c.numero_documento.includes(lower))
+    );
+  }, [clientesLista, clienteSearch]);
+
   const agregarAlCarrito = useCallback((producto: Producto) => {
     setCarrito(prev => {
       const existe = prev.find(item => item.id === producto.id);
@@ -136,16 +112,12 @@ export const usePuntoVenta = () => {
           toast.warning(`Stock máximo alcanzado para ${producto.nombre}`);
           return prev;
         }
-        return prev.map(item =>
-          item.id === producto.id
-            ? { ...item, cantidadVenta: item.cantidadVenta + 1 }
-            : item
-        );
+        return prev.map(item => item.id === producto.id ? { ...item, cantidadVenta: item.cantidadVenta + 1 } : item);
       }
       return [...prev, { ...producto, cantidadVenta: 1, descuento: 0 }];
     });
   }, []);
- 
+
   const modificarCantidad = useCallback((id: number, cantidad: number) => {
     if (cantidad < 1) return;
     setCarrito(prev =>
@@ -159,21 +131,17 @@ export const usePuntoVenta = () => {
       })
     );
   }, []);
- 
+
   const quitarDelCarrito = useCallback((id: number) => {
     setCarrito(prev => prev.filter(item => item.id !== id));
   }, []);
- 
-  // ─── Totales ──────────────────────────────────────────────────────────────
+
   const totales = useMemo(() => {
     let subtotalLineas = 0;
     let igvTotal = 0;
- 
+
     carrito.forEach(item => {
-      const precio =
-        formularioVenta.tipo_venta === "minorista"
-          ? item.precio_minorista
-          : item.precio_mayorista;
+      const precio = formularioVenta.tipo_venta === "minorista" ? item.precio_minorista : item.precio_mayorista;
       const totalLinea = precio * item.cantidadVenta - item.descuento;
       subtotalLineas += totalLinea;
       if (item.afecto_igv) {
@@ -181,241 +149,110 @@ export const usePuntoVenta = () => {
         igvTotal += totalLinea - base;
       }
     });
- 
-    const costoEnvio = formEnvio.requiere_envio ? Number(formEnvio.costo_envio) || 0 : 0;
-    return {
-      subtotal: subtotalLineas - igvTotal,
-      igvTotal,
-      total: subtotalLineas,
-      costoEnvio,
-      totalConEnvio: subtotalLineas + costoEnvio,
-    };
-  }, [carrito, formularioVenta.tipo_venta, formEnvio.requiere_envio, formEnvio.costo_envio]);
- 
-  // ─── Consulta de documento ────────────────────────────────────────────────
-  const buscarCliente = useCallback(async () => {
-    if (formularioVenta.numero_documento.length < 8) {
-      toast.error("Ingrese un número de documento válido.");
-      return;
+
+    return { subtotal: subtotalLineas - igvTotal, igvTotal, total: subtotalLineas };
+  }, [carrito, formularioVenta.tipo_venta]);
+
+  // Si se paga completo, el monto abonado debe ser igual al total automáticamente
+  useEffect(() => {
+    if (formularioVenta.estado_pago === "pagado") {
+      setFormularioVenta(prev => ({ ...prev, monto_abonado: totales.total }));
     }
-    const tipo = formularioVenta.numero_documento.length === 11 ? "RUC" : "DNI";
-    const toastId = toast.loading(`Consultando ${tipo}...`);
-    try {
-      const res = await api.get("/consultar-documento", {
-        params: {
-          tipo_documento: tipo,
-          numero_documento: formularioVenta.numero_documento,
-        },
-      });
-      if (res.data.success) {
-        const datos = res.data.data;
-        const nombre =
-          tipo === "DNI"
-            ? `${datos.nombre} ${datos.apellido}`.trim()
-            : datos.nombre;
-        setFormularioVenta(prev => ({ ...prev, nombre_cliente: nombre }));
-        // Si se encontró dirección, pre-rellenar la dirección de envío
-        if (datos.direccion && !formEnvio.direccion_destino) {
-          setFormEnvio(prev => ({ ...prev, direccion_destino: datos.direccion }));
-        }
-        toast.success("Cliente encontrado", { id: toastId });
-      } else {
-        setFormularioVenta(prev => ({ ...prev, nombre_cliente: "No encontrado" }));
-        toast.error(res.data.message || "Documento no encontrado", { id: toastId });
-      }
-    } catch {
-      toast.error("Error al consultar documento.", { id: toastId });
-    }
-  }, [formularioVenta.numero_documento, formEnvio.direccion_destino]);
- 
-  // ─── Validar campos de envío ──────────────────────────────────────────────
-  const validarEnvio = (): boolean => {
-    if (!formEnvio.requiere_envio) return true;
-    const e: Record<string, string> = {};
-    if (!formEnvio.direccion_destino.trim()) e.direccion_destino = "La dirección es obligatoria.";
-    if (formEnvio.tipo_envio === "interregional" && !formEnvio.agencia_transporte_id)
-      e.agencia_transporte_id = "Seleccione una agencia para envío interregional.";
-    setErroresEnvio(e);
-    return Object.keys(e).length === 0;
-  };
- 
-  // ─── Cambiar campos de envío ──────────────────────────────────────────────
-  const handleChangeEnvio = (field: keyof FormEnvio, value: string | boolean) => {
-    setFormEnvio(prev => ({ ...prev, [field]: value }));
-    if (typeof value === "string" && erroresEnvio[field])
-      setErroresEnvio(prev => ({ ...prev, [field]: "" }));
-  };
- 
-  const toggleRequiereEnvio = () => {
-    setFormEnvio(prev => ({
-      ...FORM_ENVIO_INICIAL,
-      requiere_envio: !prev.requiere_envio,
-    }));
-    setErroresEnvio({});
-  };
- 
-  // ─── Procesar venta (con envío opcional) ──────────────────────────────────
+  }, [formularioVenta.estado_pago, totales.total]);
+
   const procesarVenta = useCallback(async () => {
     if (carrito.length === 0) return toast.error("El carrito está vacío.");
-    if (
-      formularioVenta.tipo_comprobante === "Factura" &&
-      formularioVenta.numero_documento.length !== 11
-    ) {
-      return toast.error("Para emitir Factura se requiere un RUC de 11 dígitos.");
+    
+    const clienteSeleccionado = clientesLista.find(c => c.id.toString() === formularioVenta.customer_id);
+
+    if (formularioVenta.tipo_comprobante === "Factura") {
+      if (!clienteSeleccionado) return toast.error("Factura: Seleccione un cliente con RUC.");
+      if (clienteSeleccionado.numero_documento?.length !== 11) return toast.error("Factura: El cliente requiere un RUC válido (11 dígitos).");
     }
-    if (!validarEnvio()) {
-      toast.error("Complete los datos de envío.");
-      return;
+
+    if (formularioVenta.estado_pago === "pendiente" && formularioVenta.monto_abonado > totales.total) {
+      return toast.error("El monto abonado no puede ser mayor al total.");
     }
- 
+
     try {
       setProcesando(true);
 
-      
- 
-      // 1. Crear la venta
-      const detallesFormateados = carrito.map(item => ({
-        producto_id: item.id,
+      const itemsFormateados = carrito.map(item => ({
+        product_id: item.id,
         cantidad: item.cantidadVenta,
-        precio_unitario:
-          formularioVenta.tipo_venta === "minorista"
-            ? item.precio_minorista
-            : item.precio_mayorista,
         descuento: item.descuento,
       }));
- 
+
+      // NOTA: Tu API en Laravel actualmente no guarda "monto_abonado". 
+      // Lo enviamos igual por si tus compañeros lo agregan luego.
       const payloadVenta = {
-        ...formularioVenta,
-        cliente_id: formularioVenta.cliente_id || null,
-        detalles: detallesFormateados,
+        customer_id: formularioVenta.customer_id || null,
+        user_id: 1, 
+        tipo_venta: formularioVenta.tipo_venta,
+        tipo_comprobante: formularioVenta.tipo_comprobante,
+        serie: formularioVenta.serie,
+        metodo_pago: formularioVenta.metodo_pago,
+        estado_pago: formularioVenta.estado_pago,
+        monto_abonado: formularioVenta.monto_abonado, 
+        items: itemsFormateados,
       };
- 
-      const resVenta = await api.post("/ventas", payloadVenta);
-      if (!resVenta.data.success) throw new Error(resVenta.data.message);
- 
-      const ventaCreada = resVenta.data.data;
-      toast.success(`Venta completada · ${ventaCreada.comprobante}`);
- 
-      // 2. Si requiere envío, crearlo automáticamente
-      if (formEnvio.requiere_envio) {
-        try {
-          const payloadEnvio = {
-            venta_id: ventaCreada.id,
-            tipo_envio: formEnvio.tipo_envio,
-            direccion_destino: formEnvio.direccion_destino,
-            agencia_transporte_id: formEnvio.agencia_transporte_id
-              ? Number(formEnvio.agencia_transporte_id)
-              : null,
-            repartidor_nombre: formEnvio.repartidor_nombre || null,
-            costo_envio: Number(formEnvio.costo_envio) || 0,
-            fecha_estimada_llegada: formEnvio.fecha_estimada_llegada || null,
-            estado_actual: "preparando",
-          };
-          const resEnvio = await api.post("/envios", payloadEnvio);
-          if (resEnvio.data.success) {
-            toast.success("Envío registrado y listo para despacho 🚚");
-          }
-        } catch {
-          // La venta ya se creó; el envío fallido no es crítico
-          toast.warning("La venta se registró pero hubo un error al crear el envío. Créalo manualmente.");
-        }
+
+      const resVenta = await fetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payloadVenta)
+      });
+
+      if (!resVenta.ok) {
+        if (resVenta.status === 422) return toast.error("Error de validación. Revisa los datos.");
+        throw new Error("Error interno del servidor");
       }
 
-            // Dentro de procesarVenta, después de crear la venta y opcionalmente el envío
-      const infoEnvio = formEnvio.requiere_envio
-        ? {
-            requeria_envio: true,
-            direccion_envio: formEnvio.direccion_destino,
-            costo_envio: Number(formEnvio.costo_envio) || 0,
-          }
-        : { requeria_envio: false };
+      const jsonVenta = await resVenta.json();
+      const ventaCreada = jsonVenta.data;
+      
+      toast.success(`Venta registrada · ${ventaCreada.tipo_comprobante} ${ventaCreada.serie}-${ventaCreada.correlativo}`);
 
+      const nombreMostrar = clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}`.trim() : "Público General";
+      
       setUltimaVenta({
         ...ventaCreada,
         empresa,
-        ...infoEnvio,
+        nombre_cliente: nombreMostrar,
+        numero_documento: clienteSeleccionado?.numero_documento || "",
+        monto_abonado: formularioVenta.monto_abonado,
+        saldo_pendiente: totales.total - formularioVenta.monto_abonado
       });
- 
-      // 3. Actualizar estado local
-      setUltimaVenta({
-        ...ventaCreada,
-        empresa,
-        ...infoEnvio,
-      });
- 
-      // Limpiar
+
       setCarrito([]);
-      setFormularioVenta(prev => ({ ...prev, numero_documento: "", nombre_cliente: "" }));
-      setFormEnvio(FORM_ENVIO_INICIAL);
-      setErroresEnvio({});
- 
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
-      toast.error(err.response?.data?.message ?? err.message ?? "Error al procesar la venta.");
+      setFormularioVenta(prev => ({ ...prev, customer_id: "", estado_pago: "pagado", monto_abonado: 0 }));
+      setClienteSearch("");
+      
+      const prodRes = await fetch("/api/products", { headers: { Accept: "application/json" } });
+      if (prodRes.ok) {
+        const jsonProd = await prodRes.json();
+        setProductos(jsonProd.data.filter((p: Producto) => p.estado && p.stock_actual > 0));
+      }
+
+    } catch (error) {
+      toast.error("Error al procesar la venta.");
     } finally {
       setProcesando(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [carrito, formularioVenta, formEnvio, empresa]);
- 
-  // ─── Cambiar comprobante ──────────────────────────────────────────────────
+  }, [carrito, formularioVenta, clientesLista, empresa, totales.total]);
+
   const handleCambioComprobante = useCallback((tipo: string) => {
-    const serieMap: Record<string, string> = {
-      Boleta: "B001",
-      Factura: "F001",
-      "Nota de Venta": "NV01",
-    };
-    setFormularioVenta(prev => ({
-      ...prev,
-      tipo_comprobante: tipo,
-      serie: serieMap[tipo] ?? "B001",
-    }));
+    const serieMap: Record<string, string> = { "Boleta": "B001", "Factura": "F001", "Nota de Venta": "NV01" };
+    setFormularioVenta(prev => ({ ...prev, tipo_comprobante: tipo, serie: serieMap[tipo] ?? "B001" }));
   }, []);
- 
+
   return {
-    // Config
-    empresa,
-    cargando,
- 
-    // Catálogo
-    productos,
-    categorias,
-    agencias,
- 
-    // Filtros / paginación
-    busqueda,
-    setBusqueda,
-    categoriaFiltro,
-    setCategoriaFiltro,
-    pagina,
-    setPagina,
-    totalPaginas,
-    paginaAjustada,
-    productosPaginados,
- 
-    // Carrito
-    carrito,
-    totales,
-    agregarAlCarrito,
-    modificarCantidad,
-    quitarDelCarrito,
- 
-    // Formulario venta
-    formularioVenta,
-    setFormularioVenta,
-    handleCambioComprobante,
-    buscarCliente,
- 
-    // Formulario envío
-    formEnvio,
-    erroresEnvio,
-    handleChangeEnvio,
-    toggleRequiereEnvio,
- 
-    // Estado de proceso
-    procesando,
-    procesarVenta,
-    ultimaVenta,
-    setUltimaVenta,
+    empresa, cargando, productos, categorias, clientesLista,
+    busqueda, setBusqueda, categoriaFiltro, setCategoriaFiltro,
+    pagina, setPagina, totalPaginas, paginaAjustada, productosPaginados,
+    carrito, totales, agregarAlCarrito, modificarCantidad, quitarDelCarrito,
+    formularioVenta, setFormularioVenta, handleCambioComprobante,
+    procesando, procesarVenta, ultimaVenta, setUltimaVenta,
+    clienteSearch, setClienteSearch, showClienteDropdown, setShowClienteDropdown, clientesFiltrados
   };
 };

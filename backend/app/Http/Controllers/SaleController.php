@@ -19,8 +19,7 @@ class SaleController extends Controller
 {
     public function index(Request $request)
     {
-        $sales = Sale::all();
-
+        $sales = Sale::with(['customer', 'user'])->orderBy('id', 'desc')->get();
         return new SaleCollection($sales);
     }
 
@@ -120,6 +119,13 @@ class SaleController extends Controller
 
     public function show(Request $request, Sale $sale)
     {
+        return new SaleResource($sale);
+    }
+
+    public function update(Request $request, Sale $sale)
+    {
+        $sale->update($request->only(['estado_pago']));
+
         return new SaleResource($sale);
     }
 

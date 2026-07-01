@@ -7,21 +7,24 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 
 class PurchaseFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     */
     public function definition(): array
     {
+        $tipoComprobante = fake()->randomElement(['Factura', 'Boleta', 'Guía de Remisión']);
+        $serie = $tipoComprobante === 'Factura' ? fake()->bothify('F00#') : fake()->bothify('B00#');
+        
+        $subtotal = fake()->randomFloat(2, 50, 5000);
+        $igv = $tipoComprobante === 'Factura' ? $subtotal * 0.18 : 0;
+
         return [
             'supplier_id' => Supplier::factory(),
-            'tipo_comprobante' => fake()->regexify('[A-Za-z0-9]{50}'),
-            'serie' => fake()->regexify('[A-Za-z0-9]{20}'),
-            'numero' => fake()->regexify('[A-Za-z0-9]{50}'),
-            'fecha_emision' => fake()->date(),
-            'subtotal' => fake()->randomFloat(2, 0, 99999999.99),
-            'igv' => fake()->randomFloat(2, 0, 99999999.99),
-            'total' => fake()->randomFloat(2, 0, 99999999.99),
-            'estado' => fake()->boolean(),
+            'tipo_comprobante' => $tipoComprobante,
+            'serie' => $serie,
+            'numero' => fake()->unique()->numerify('######'),
+            'fecha_emision' => fake()->dateTimeThisYear(),
+            'subtotal' => $subtotal,
+            'igv' => $igv,
+            'total' => $subtotal + $igv,
+            'estado' => fake()->boolean(95),
         ];
     }
 }

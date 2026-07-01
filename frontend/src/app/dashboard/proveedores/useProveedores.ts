@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import api from "../../../lib/api";
 
 export interface Proveedor {
   id: number;
@@ -8,7 +7,6 @@ export interface Proveedor {
   numero_documento: string;
   razon_social: string;
   contacto: string | null;
-  nombre_completo: string; // viene del backend (accessor)
   telefono: string | null;
   direccion: string | null;
   region: string | null;
@@ -26,7 +24,7 @@ export const useProveedores = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  const [proveedorAEditar, setProveedorAEditar] = useState<number | null>(null);
+  const [proveedorAEditar, setProveedorAEditar] = useState<Proveedor | null>(null);
 
   const [formData, setFormData] = useState({
     tipo_documento: "",
@@ -43,17 +41,18 @@ export const useProveedores = () => {
   });
 
   const [errores, setErrores] = useState<Record<string, string>>({});
-  const [consultandoDoc, setConsultandoDoc] = useState(false);
-
+  
   const POR_PAGINA = 10;
   const [pagina, setPagina] = useState(1);
 
+  // --- CARGAR DATOS ---
   const fetchProveedores = async () => {
     try {
       setCargando(true);
-      const response = await api.get("/proveedores");
-      if (response.data.success) {
-        setProveedores(response.data.data);
+      const response = await fetch("/api/suppliers", { headers: { Accept: "application/json" } });
+      if (response.ok) {
+        const json = await response.json();
+        setProveedores(json.data);
       }
     } catch (error) {
       toast.error("Error al cargar proveedores.");
@@ -66,160 +65,31 @@ export const useProveedores = () => {
     fetchProveedores();
   }, []);
 
-  const validarFormulario = () => {
-    const nuevosErrores: Record<string, string> = {};
-
-    if (!formData.razon_social.trim()) {
-      nuevosErrores.razon_social = "La razón social es obligatoria.";
-    }
-
-    if (formData.tipo_documento && formData.numero_documento) {
-      if (formData.tipo_documento === "DNI" && formData.numero_documento.length !== 8) {
-        nuevosErrores.numero_documento = "El DNI debe tener 8 dígitos.";
-      } else if (formData.tipo_documento === "RUC" && formData.numero_documento.length !== 11) {
-        nuevosErrores.numero_documento = "El RUC debe tener 11 dígitos.";
-      }
-    }
-
-    if (formData.telefono && formData.telefono.trim() !== "") {
-      if (!/^9\d{8}$/.test(formData.telefono)) {
-        nuevosErrores.telefono = "El celular debe tener 9 dígitos y empezar con 9.";
-      }
-    }
-
-    setErrores(nuevosErrores);
-    return Object.keys(nuevosErrores).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validarFormulario()) return;
-
-    try {
-      setGuardando(true);
-      let response;
-      if (proveedorAEditar) {
-        response = await api.put(`/proveedores/${proveedorAEditar}`, formData);
-      } else {
-        response = await api.post("/proveedores", formData);
-      }
-      if (response.data.success) {
-        toast.success(response.data.message);
-        cerrarModal();
-        fetchProveedores();
-      }
-    } catch (error: any) {
-      if (error.response?.data?.errors) {
-        const backendErrors = error.response.data.errors;
-        const nuevosErrores: Record<string, string> = {};
-        Object.keys(backendErrors).forEach((key) => {
-          nuevosErrores[key] = backendErrors[key][0];
-        });
-        setErrores(nuevosErrores);
-      } else {
-        toast.error("Error al procesar.");
-      }
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const consultarDocumento = async () => {
-    if (!formData.tipo_documento || !formData.numero_documento) {
-      toast.error("Seleccione tipo y número de documento.");
-      return;
-    }
-
-    setConsultandoDoc(true);
-    try {
-      const response = await api.get("/consultar-documento", {
-        params: {
-          tipo_documento: formData.tipo_documento,
-          numero_documento: formData.numero_documento,
-        },
-      });
-
-      if (response.data.success) {
-        const datos = response.data.data;
-        // Para DNI: concatenar nombre + apellido en razon_social
-        // Para RUC: usar el nombre (razon_social)
-        const razonSocial = formData.tipo_documento === "DNI"
-          ? `${datos.nombre} ${datos.apellido}`.trim()
-          : datos.nombre || "";
-
-        setFormData(prev => ({
-          ...prev,
-          razon_social: razonSocial || prev.razon_social,
-          direccion: datos.direccion || prev.direccion,
-          distrito: datos.distrito || prev.distrito,
-          provincia: datos.provincia || prev.provincia,
-          departamento: datos.departamento || prev.departamento,
-        }));
-        toast.success("Datos del documento obtenidos.");
-      } else {
-        toast.error(response.data.message || "No se encontró el documento.");
-      }
-    } catch (error) {
-      toast.error("Error al consultar documento.");
-    } finally {
-      setConsultandoDoc(false);
-    }
-  };
-
-  const handleDesactivar = async (id: number, nombre: string) => {
-    if (!window.confirm(`¿Desactivar al proveedor ${nombre}?`)) return;
-    try {
-      await api.delete(`/proveedores/${id}`);
-      toast.success("Proveedor desactivado.");
-      fetchProveedores();
-    } catch (error) {
-      toast.error("No se pudo desactivar.");
-    }
-  };
-
-  const handleReactivar = async (id: number, nombre: string) => {
-    try {
-      await api.put(`/proveedores/${id}/restaurar`);
-      toast.success(`Proveedor ${nombre} reactivado.`);
-      fetchProveedores();
-    } catch (error) {
-      toast.error("No se pudo reactivar.");
-    }
-  };
-
+  // --- MANEJO DEL MODAL ---
   const abrirModalCrear = () => {
     setProveedorAEditar(null);
     setFormData({
-      tipo_documento: "",
-      numero_documento: "",
-      razon_social: "",
-      contacto: "",
-      telefono: "",
-      direccion: "",
-      region: "",
-      distrito: "",
-      provincia: "",
-      departamento: "",
-      estado: true,
+      tipo_documento: "", numero_documento: "", razon_social: "", contacto: "",
+      telefono: "", direccion: "", region: "", distrito: "", provincia: "", departamento: "", estado: true,
     });
     setErrores({});
     setIsModalOpen(true);
   };
 
-  const abrirModalEditar = (proveedor: Proveedor) => {
-    setProveedorAEditar(proveedor.id);
+  const abrirModalEditar = (prov: Proveedor) => {
+    setProveedorAEditar(prov);
     setFormData({
-      tipo_documento: proveedor.tipo_documento || "",
-      numero_documento: proveedor.numero_documento || "",
-      razon_social: proveedor.razon_social || "",
-      contacto: proveedor.contacto || "",
-      telefono: proveedor.telefono || "",
-      direccion: proveedor.direccion || "",
-      region: proveedor.region || "",
-      distrito: proveedor.distrito || "",
-      provincia: proveedor.provincia || "",
-      departamento: proveedor.departamento || "",
-      estado: proveedor.estado,
+      tipo_documento: prov.tipo_documento || "",
+      numero_documento: prov.numero_documento || "",
+      razon_social: prov.razon_social || "",
+      contacto: prov.contacto || "",
+      telefono: prov.telefono || "",
+      direccion: prov.direccion || "",
+      region: prov.region || "",
+      distrito: prov.distrito || "",
+      provincia: prov.provincia || "",
+      departamento: prov.departamento || "",
+      estado: prov.estado,
     });
     setErrores({});
     setIsModalOpen(true);
@@ -256,66 +126,116 @@ export const useProveedores = () => {
     setErrores(prev => ({ ...prev, numero_documento: "" }));
   };
 
-  // KPIs
+  // --- GUARDAR O ACTUALIZAR ---
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGuardando(true);
+    setErrores({});
+
+    const url = proveedorAEditar ? `/api/suppliers/${proveedorAEditar.id}` : "/api/suppliers";
+    const method = proveedorAEditar ? "PUT" : "POST";
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        if (response.status === 422) {
+          const data = await response.json();
+          const validacionErrores: Record<string, string> = {};
+          if (data.errors) {
+            Object.keys(data.errors).forEach((key) => {
+              validacionErrores[key] = data.errors[key][0];
+            });
+          }
+          setErrores(validacionErrores);
+          toast.error("Por favor, revisa los campos en rojo.");
+          return;
+        }
+        throw new Error("Error en el servidor");
+      }
+
+      toast.success(proveedorAEditar ? "Proveedor actualizado" : "Proveedor registrado");
+      await fetchProveedores();
+      cerrarModal();
+    } catch (error) {
+      toast.error("Hubo un problema de conexión al guardar.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  // --- ESTADOS LÓGICOS ---
+  const cambiarEstado = async (proveedor: Proveedor, nuevoEstado: boolean) => {
+    try {
+      const payload = { ...proveedor, estado: nuevoEstado };
+      const response = await fetch(`/api/suppliers/${proveedor.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        toast.success(nuevoEstado ? "Proveedor reactivado" : "Proveedor suspendido");
+        await fetchProveedores();
+      } else {
+        toast.error("No se pudo cambiar el estado.");
+      }
+    } catch (error) {
+      toast.error("Error de conexión.");
+    }
+  };
+
+  const handleDesactivar = (id: number, nombre: string) => {
+    if (window.confirm(`¿Suspender al proveedor "${nombre}"?`)) {
+      const prov = proveedores.find((p) => p.id === id);
+      if (prov) cambiarEstado(prov, false);
+    }
+  };
+
+  const handleReactivar = (id: number) => {
+    const prov = proveedores.find((p) => p.id === id);
+    if (prov) cambiarEstado(prov, true);
+  };
+
+  // --- FILTROS Y PAGINACIÓN ---
+  const proveedoresFiltrados = useMemo(() => {
+    return proveedores.filter((p) => {
+      const coincideEstado = filtroEstado === "activos" ? p.estado : !p.estado;
+      const texto = busqueda.toLowerCase();
+      const coincideBusqueda =
+        p.razon_social.toLowerCase().includes(texto) ||
+        (p.contacto && p.contacto.toLowerCase().includes(texto)) ||
+        (p.numero_documento && p.numero_documento.includes(texto));
+      return coincideEstado && coincideBusqueda;
+    });
+  }, [proveedores, busqueda, filtroEstado]);
+
   const totalProveedores = proveedores.length;
   const proveedoresActivos = proveedores.filter(p => p.estado).length;
   const proveedoresConTelefono = proveedores.filter(p => p.telefono).length;
 
-  // Filtros + búsqueda + paginación
-  const proveedoresFiltrados = proveedores
-    .filter(p => (filtroEstado === "activos" ? p.estado : !p.estado))
-    .filter(p => {
-      const t = busqueda.toLowerCase();
-      return (
-        p.razon_social?.toLowerCase().includes(t) ||
-        p.nombre_completo?.toLowerCase().includes(t) ||
-        p.numero_documento?.includes(t)
-      );
-    });
+  const totalPaginas = Math.ceil(proveedoresFiltrados.length / POR_PAGINA) || 1;
+  const paginaAjustada = Math.min(pagina, totalPaginas);
 
-  const totalPaginas = Math.ceil(proveedoresFiltrados.length / POR_PAGINA);
-  const paginaAjustada = Math.min(pagina, Math.max(1, totalPaginas));
-  const proveedoresPaginados = proveedoresFiltrados.slice(
-    (paginaAjustada - 1) * POR_PAGINA,
-    paginaAjustada * POR_PAGINA
-  );
+  const proveedoresPaginados = useMemo(() => {
+    const inicio = (paginaAjustada - 1) * POR_PAGINA;
+    return proveedoresFiltrados.slice(inicio, inicio + POR_PAGINA);
+  }, [proveedoresFiltrados, paginaAjustada]);
 
   useEffect(() => {
-    setPagina(1);
-  }, [filtroEstado, busqueda]);
+    if (pagina !== paginaAjustada) setPagina(paginaAjustada);
+  }, [paginaAjustada, pagina]);
 
   return {
-    proveedores,
-    cargando,
-    filtroEstado,
-    setFiltroEstado,
-    busqueda,
-    setBusqueda,
-    isModalOpen,
-    guardando,
-    proveedorAEditar,
-    formData,
-    setFormData,
-    handleSubmit,
-    handleDesactivar,
-    handleReactivar,
-    abrirModalCrear,
-    abrirModalEditar,
-    cerrarModal,
-    handleTelefonoChange,
-    handleNumeroDocumentoChange,
-    handleChange,
-    errores,
-    consultarDocumento,
-    consultandoDoc,
-    totalProveedores,
-    proveedoresActivos,
-    proveedoresConTelefono,
-    proveedoresFiltrados,
-    proveedoresPaginados,
-    pagina,
-    setPagina,
-    totalPaginas,
-    paginaAjustada,
+    proveedoresPaginados, proveedoresFiltrados, cargando, filtroEstado, setFiltroEstado,
+    busqueda, setBusqueda, isModalOpen, guardando, proveedorAEditar, formData,
+    handleChange, handleTelefonoChange, handleNumeroDocumentoChange, handleSubmit,
+    handleDesactivar, handleReactivar, abrirModalCrear, abrirModalEditar, cerrarModal,
+    errores, totalProveedores, proveedoresActivos, proveedoresConTelefono,
+    pagina, setPagina, totalPaginas, paginaAjustada,
   };
 };

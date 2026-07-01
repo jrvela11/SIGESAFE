@@ -18,8 +18,8 @@ class PurchaseController extends Controller
 {
     public function index(Request $request)
     {
-        $purchases = Purchase::all();
-
+        // Eager loading para traer al proveedor junto con la compra
+        $purchases = Purchase::with(['supplier'])->orderBy('id', 'desc')->get();
         return new PurchaseCollection($purchases);
     }
 

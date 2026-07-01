@@ -6,22 +6,18 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class SupplierUpdateRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     */
     public function rules(): array
     {
+        $supplierId = $this->route('supplier')?->id ?? $this->route('supplier');
+
         return [
             'tipo_documento' => ['nullable', 'string', 'max:20'],
-            'numero_documento' => ['nullable', 'string', 'max:20', 'unique:suppliers,numero_documento'],
+            'numero_documento' => ['nullable', 'string', 'max:20', 'unique:suppliers,numero_documento,' . $supplierId],
             'razon_social' => ['required', 'string', 'max:255'],
             'contacto' => ['nullable', 'string', 'max:255'],
             'telefono' => ['nullable', 'string', 'max:20'],
@@ -30,7 +26,7 @@ class SupplierUpdateRequest extends FormRequest
             'departamento' => ['nullable', 'string', 'max:100'],
             'provincia' => ['nullable', 'string', 'max:100'],
             'distrito' => ['nullable', 'string', 'max:100'],
-            'estado' => ['required'],
+            'estado' => ['required', 'boolean'], // Aseguramos que valide como booleano
         ];
     }
 }

@@ -7,4 +7,21 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      // El puente para las peticiones de datos (JSON)
+      '/api': {
+        target: 'http://127.0.0.1:8080', 
+        changeOrigin: true,
+        headers: {
+          Accept: 'application/json',
+        }
+      },
+      // EL NUEVO PUENTE PARA LAS IMÁGENES
+      '^/storage': {
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true,
+      }
+    }
+  }
 })

@@ -1,20 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import api from "../../../lib/api";
 
 export interface Cliente {
   id: number;
-  tipo_documento: string;
-  numero_documento: string;
+  tipo_documento: string | null;
+  numero_documento: string | null;
   nombre: string;
   apellido: string | null;
-  nombre_completo: string;
-  email: string;
+  email: string | null;
   telefono: string | null;
   direccion: string | null;
   distrito: string | null;
   provincia: string | null;
   departamento: string | null;
+  estado: boolean;
+}
+
+export interface ClienteFormData {
+  tipo_documento: string;
+  numero_documento: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  telefono: string;
+  direccion: string;
+  distrito: string;
+  provincia: string;
+  departamento: string;
   estado: boolean;
 }
 
@@ -26,9 +38,9 @@ export const useClientes = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  const [clienteAEditar, setClienteAEditar] = useState<number | null>(null);
+  const [clienteAEditar, setClienteAEditar] = useState<Cliente | null>(null);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ClienteFormData>({
     tipo_documento: "",
     numero_documento: "",
     nombre: "",
@@ -43,20 +55,23 @@ export const useClientes = () => {
   });
 
   const [errores, setErrores] = useState<Record<string, string>>({});
-  const [consultandoDoc, setConsultandoDoc] = useState(false);
 
   const POR_PAGINA = 10;
   const [pagina, setPagina] = useState(1);
 
+  // --- CARGAR DATOS ---
   const fetchClientes = async () => {
     try {
       setCargando(true);
-      const response = await api.get("/clientes");
-      if (response.data.success) {
-        setClientes(response.data.data);
+      const response = await fetch("/api/customers", {
+        headers: { Accept: "application/json" }
+      });
+      if (response.ok) {
+        const json = await response.json();
+        setClientes(json.data);
       }
     } catch (error) {
-      toast.error("Error al cargar clientes.");
+      toast.error("Error al cargar clientes desde el servidor.");
     } finally {
       setCargando(false);
     }
@@ -66,123 +81,7 @@ export const useClientes = () => {
     fetchClientes();
   }, []);
 
-  const validarFormulario = () => {
-    const nuevosErrores: Record<string, string> = {};
-
-    if (!formData.nombre.trim()) {
-      nuevosErrores.nombre = "El nombre es obligatorio.";
-    }
-
-    if (formData.tipo_documento && formData.numero_documento) {
-      if (formData.tipo_documento === "DNI" && formData.numero_documento.length !== 8) {
-        nuevosErrores.numero_documento = "El DNI debe tener 8 dígitos.";
-      } else if (formData.tipo_documento === "RUC" && formData.numero_documento.length !== 11) {
-        nuevosErrores.numero_documento = "El RUC debe tener 11 dígitos.";
-      }
-    }
-
-    if (formData.telefono && formData.telefono.trim() !== "") {
-      if (!/^9\d{8}$/.test(formData.telefono)) {
-        nuevosErrores.telefono = "El celular debe tener 9 dígitos y empezar con 9.";
-      }
-    }
-
-    setErrores(nuevosErrores);
-    return Object.keys(nuevosErrores).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validarFormulario()) return;
-
-    try {
-      setGuardando(true);
-      let response;
-      if (clienteAEditar) {
-        response = await api.put(`/clientes/${clienteAEditar}`, formData);
-      } else {
-        response = await api.post("/clientes", formData);
-      }
-      if (response.data.success) {
-        toast.success(response.data.message);
-        cerrarModal();
-        fetchClientes();
-      }
-    } catch (error: any) {
-      if (error.response?.data?.errors) {
-        const backendErrors = error.response.data.errors;
-        const nuevosErrores: Record<string, string> = {};
-        Object.keys(backendErrors).forEach((key) => {
-          nuevosErrores[key] = backendErrors[key][0];
-        });
-        setErrores(nuevosErrores);
-      } else {
-        toast.error("Error al procesar.");
-      }
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-    const consultarDocumento = async () => {
-    if (!formData.tipo_documento || !formData.numero_documento) {
-      toast.error("Seleccione tipo y número de documento.");
-      return;
-    }
-
-    setConsultandoDoc(true);
-    try {
-      const response = await api.get("/consultar-documento", {
-        params: {
-          tipo_documento: formData.tipo_documento,
-          numero_documento: formData.numero_documento,
-        },
-      });
-
-      if (response.data.success) {
-        const datos = response.data.data;
-        // El backend ya mapea los campos a 'nombre', 'apellido', 'direccion'
-        setFormData(prev => ({
-          ...prev,
-          nombre: datos.nombre || prev.nombre,
-          apellido: datos.apellido || prev.apellido,
-          direccion: datos.direccion || prev.direccion,
-          distrito: datos.distrito || prev.distrito,
-          provincia: datos.provincia || prev.provincia,
-          departamento: datos.departamento || prev.departamento,
-        }));
-        toast.success("Datos del documento obtenidos.");
-      } else {
-        toast.error(response.data.message || "No se encontró el documento.");
-      }
-    } catch (error) {
-      toast.error("Error al consultar documento.");
-    } finally {
-      setConsultandoDoc(false);
-    }
-  };
-
-  const handleDesactivar = async (id: number, nombre: string) => {
-    if (!window.confirm(`¿Desactivar al cliente ${nombre}?`)) return;
-    try {
-      await api.delete(`/clientes/${id}`);
-      toast.success("Cliente desactivado.");
-      fetchClientes();
-    } catch (error) {
-      toast.error("No se pudo desactivar.");
-    }
-  };
-
-  const handleReactivar = async (id: number, nombre: string) => {
-    try {
-      await api.put(`/clientes/${id}/restaurar`);
-      toast.success(`Cliente ${nombre} reactivado.`);
-      fetchClientes();
-    } catch (error) {
-      toast.error("No se pudo reactivar.");
-    }
-  };
-
+  // --- MANEJO DEL FORMULARIO Y MODAL ---
   const abrirModalCrear = () => {
     setClienteAEditar(null);
     setFormData({
@@ -203,7 +102,7 @@ export const useClientes = () => {
   };
 
   const abrirModalEditar = (cliente: Cliente) => {
-    setClienteAEditar(cliente.id);
+    setClienteAEditar(cliente);
     setFormData({
       tipo_documento: cliente.tipo_documento || "",
       numero_documento: cliente.numero_documento || "",
@@ -227,7 +126,7 @@ export const useClientes = () => {
     setErrores({});
   };
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: keyof ClienteFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setErrores((prev) => ({ ...prev, [field]: "" }));
   };
@@ -252,33 +151,119 @@ export const useClientes = () => {
     setErrores((prev) => ({ ...prev, numero_documento: "" }));
   };
 
-  // KPIs
+  // --- GUARDAR O ACTUALIZAR ---
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGuardando(true);
+    setErrores({});
+
+    const url = clienteAEditar ? `/api/customers/${clienteAEditar.id}` : "/api/customers";
+    const method = clienteAEditar ? "PUT" : "POST";
+    const payload = { ...formData };
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        if (response.status === 422) {
+          const data = await response.json();
+          const validacionErrores: Record<string, string> = {};
+          if (data.errors) {
+            Object.keys(data.errors).forEach((key) => {
+              validacionErrores[key] = data.errors[key][0];
+            });
+          }
+          setErrores(validacionErrores);
+          toast.error("Por favor, revisa los campos en rojo.");
+          return;
+        }
+        throw new Error("Error en el servidor");
+      }
+
+      toast.success(clienteAEditar ? "Cliente actualizado exitosamente" : "Cliente registrado exitosamente");
+      await fetchClientes();
+      cerrarModal();
+    } catch (error) {
+      toast.error("Hubo un problema de conexión al guardar el cliente.");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  // --- ESTADOS LÓGICOS ---
+  const cambiarEstado = async (cliente: Cliente, nuevoEstado: boolean) => {
+    try {
+      const payload = { ...cliente, estado: nuevoEstado };
+      
+      const response = await fetch(`/api/customers/${cliente.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        toast.success(nuevoEstado ? "Cliente reactivado" : "Cliente suspendido");
+        await fetchClientes();
+      } else {
+        toast.error("No se pudo cambiar el estado del cliente.");
+      }
+    } catch (error) {
+      toast.error("Error de conexión.");
+    }
+  };
+
+  const handleDesactivar = (id: number, nombre: string) => {
+    if (window.confirm(`¿Estás seguro de suspender al cliente ${nombre}?`)) {
+      const cliente = clientes.find((c) => c.id === id);
+      if (cliente) cambiarEstado(cliente, false);
+    }
+  };
+
+  const handleReactivar = (id: number) => {
+    const cliente = clientes.find((c) => c.id === id);
+    if (cliente) cambiarEstado(cliente, true);
+  };
+
+  // --- FILTROS Y PAGINACIÓN ---
+  const clientesFiltrados = useMemo(() => {
+    return clientes.filter((c) => {
+      const coincideEstado = filtroEstado === "activos" ? c.estado : !c.estado;
+      const textoBusqueda = busqueda.toLowerCase();
+      const coincideBusqueda =
+        c.nombre.toLowerCase().includes(textoBusqueda) ||
+        (c.apellido && c.apellido.toLowerCase().includes(textoBusqueda)) ||
+        (c.email && c.email.toLowerCase().includes(textoBusqueda)) ||
+        (c.numero_documento && c.numero_documento.includes(textoBusqueda));
+        
+      return coincideEstado && coincideBusqueda;
+    });
+  }, [clientes, busqueda, filtroEstado]);
+
   const totalClientes = clientes.length;
   const clientesActivos = clientes.filter((c) => c.estado).length;
   const clientesConTelefono = clientes.filter((c) => c.telefono).length;
 
-  // Filtros + búsqueda + paginación
-  const clientesFiltrados = clientes
-    .filter((c) => (filtroEstado === "activos" ? c.estado : !c.estado))
-    .filter((c) => {
-      const t = busqueda.toLowerCase();
-      return (
-        c.nombre_completo?.toLowerCase().includes(t) ||
-        c.nombre?.toLowerCase().includes(t) ||
-        c.email?.toLowerCase().includes(t)
-      );
-    });
+  const totalPaginas = Math.ceil(clientesFiltrados.length / POR_PAGINA) || 1;
+  const paginaAjustada = Math.min(pagina, totalPaginas);
 
-  const totalPaginas = Math.ceil(clientesFiltrados.length / POR_PAGINA);
-  const paginaAjustada = Math.min(pagina, Math.max(1, totalPaginas));
-  const clientesPaginados = clientesFiltrados.slice(
-    (paginaAjustada - 1) * POR_PAGINA,
-    paginaAjustada * POR_PAGINA
-  );
+  const clientesPaginados = useMemo(() => {
+    const inicio = (paginaAjustada - 1) * POR_PAGINA;
+    return clientesFiltrados.slice(inicio, inicio + POR_PAGINA);
+  }, [clientesFiltrados, paginaAjustada]);
 
   useEffect(() => {
-    setPagina(1);
-  }, [filtroEstado, busqueda]);
+    if (pagina !== paginaAjustada) setPagina(paginaAjustada);
+  }, [paginaAjustada, pagina]);
 
   return {
     clientes,
@@ -291,19 +276,16 @@ export const useClientes = () => {
     guardando,
     clienteAEditar,
     formData,
-    setFormData,
+    handleChange,
+    handleTelefonoChange,
+    handleNumeroDocumentoChange,
     handleSubmit,
     handleDesactivar,
     handleReactivar,
     abrirModalCrear,
     abrirModalEditar,
     cerrarModal,
-    handleTelefonoChange,
-    handleNumeroDocumentoChange,
-    handleChange,
     errores,
-    consultarDocumento,
-    consultandoDoc,
     totalClientes,
     clientesActivos,
     clientesConTelefono,
