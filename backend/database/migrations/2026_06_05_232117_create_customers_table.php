@@ -23,6 +23,10 @@ return new class extends Migration
             $table->string('distrito', 100)->nullable();
             $table->string('provincia', 100)->nullable();
             $table->string('departamento', 100)->nullable();
+
+            $table->decimal('latitud', 10, 8)->nullable();
+            $table->decimal('longitud', 11, 8)->nullable();
+
             $table->boolean('estado')->default(true);
             $table->timestamps();
             $table->softDeletes();
