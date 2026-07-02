@@ -11,13 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('inventory_movements', function (Blueprint $table) {
+        Schema::create('shipment_histories', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('inventory_id');
-            $table->foreignId('sale_detail_id')->nullable();
-            $table->enum('tipo', ["entrada","salida"]);
-            $table->decimal('cantidad', 10, 2);
-            $table->string('descripcion');
+            $table->foreignId('shipment_id')->onDelete('cascade');
+            $table->string('estado', 50);
+            $table->string('ubicacion', 255)->nullable();
+            $table->text('descripcion')->nullable();
+            $table->boolean('estado_registro')->default(1);
             $table->timestamps();
         });
     }
@@ -27,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('inventory_movements');
+        Schema::dropIfExists('shipment_histories');
     }
 };

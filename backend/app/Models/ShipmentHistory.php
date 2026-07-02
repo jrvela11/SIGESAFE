@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class InventoryMovement extends Model
+class ShipmentHistory extends Model
 {
     use HasFactory;
 
@@ -16,12 +16,11 @@ class InventoryMovement extends Model
      * @var array
      */
     protected $fillable = [
-        'inventory_id',
-        'sale_detail_id',
-        'purchase_detail_id',
-        'tipo',
-        'cantidad',
+        'shipment_id',
+        'estado',
+        'ubicacion',
         'descripcion',
+        'estado_registro',
     ];
 
     /**
@@ -33,20 +32,13 @@ class InventoryMovement extends Model
     {
         return [
             'id' => 'integer',
-            'inventory_id' => 'integer',
-            'sale_detail_id' => 'integer',
-            'cantidad' => 'decimal:2',
-            'created_at' => 'timestamp',
+            'shipment_id' => 'integer',
+            'estado_registro' => 'boolean',
         ];
     }
 
-    public function inventory(): BelongsTo
+    public function shipment(): BelongsTo
     {
-        return $this->belongsTo(Inventory::class);
-    }
-
-    public function saleDetail(): BelongsTo
-    {
-        return $this->belongsTo(SaleDetail::class);
+        return $this->belongsTo(Shipment::class);
     }
 }

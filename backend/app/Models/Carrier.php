@@ -4,9 +4,10 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Customer extends Model
+class Carrier extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -16,18 +17,9 @@ class Customer extends Model
      * @var array
      */
     protected $fillable = [
-        'tipo_documento',
-        'numero_documento',
         'nombre',
-        'apellido',
-        'email',
+        'ruc_dni',
         'telefono',
-        'direccion',
-        'distrito',
-        'provincia',
-        'departamento',
-        'latitud',
-        'longitud',
         'estado',
     ];
 
@@ -42,5 +34,10 @@ class Customer extends Model
             'id' => 'integer',
             'estado' => 'boolean',
         ];
+    }
+
+    public function shipments(): HasMany
+    {
+        return $this->hasMany(Shipment::class);
     }
 }

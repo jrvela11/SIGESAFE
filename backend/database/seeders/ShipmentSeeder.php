@@ -2,16 +2,16 @@
 
 namespace Database\Seeders;
 
-use App\Models\Purchase;
+use App\Models\Shipment;
 use Illuminate\Database\Seeder;
 
-class PurchaseSeeder extends Seeder
+class ShipmentSeeder extends Seeder
 {
     /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        Purchase::factory()->count(5)->create();
+        Shipment::factory()->count(5)->create();
     }
 }
