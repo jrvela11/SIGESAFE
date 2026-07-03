@@ -24,7 +24,7 @@ class CustomerController extends Controller
     public function store(CustomerStoreRequest $request)
     {
         $data = $request->validated();
-        
+
         // Asignamos las coordenadas de forma segura
         $data = $this->asignarCoordenadas($data);
 
@@ -40,7 +40,7 @@ class CustomerController extends Controller
     public function update(CustomerUpdateRequest $request, Customer $customer)
     {
         $data = $request->validated();
-        
+
         // Al actualizar también recalculamos las coordenadas
         $data = $this->asignarCoordenadas($data);
 
