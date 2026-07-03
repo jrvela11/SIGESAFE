@@ -33,8 +33,12 @@ class SaleStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // ID único del cliente registrado. @status optional @example 1
-            'customer_id'      => ['nullable', 'integer', 'exists:customers,id'],
+            // ID único del cliente registrado. Obligatorio si es Factura ('01')
+            'customer_id'      => [
+                $this->input('tipo_comprobante') === '01' ? 'required' : 'nullable',
+                'integer',
+                'exists:customers,id'
+            ],
 
             // ID del vendedor/usuario que procesa la operación. @example 2
             'user_id'          => ['required', 'integer', 'exists:users,id'],
@@ -42,19 +46,19 @@ class SaleStoreRequest extends FormRequest
             // Canal de distribución o tarifa a aplicar al precio del producto. @example mayorista
             'tipo_venta'       => ['required', 'string', 'in:minorista,mayorista'],
 
-            // Comprobante emitido según SUNAT (BOLETA, FACTURA, TICKET). @example FACTURA
-            'tipo_comprobante' => ['required', 'string', 'max:50'],
+            // 🚀 CAMBIO FISCAL: Códigos oficiales SUNAT ('01' = Factura, '03' = Boleta)
+            'tipo_comprobante' => ['required', 'string', 'in:01,03'],
 
-            // Identificador del terminal o punto de venta física. @example F001
+            // Identificador del terminal o punto de venta física. @example F001 o B001
             'serie'            => ['required', 'string', 'max:4'],
 
-            // Canal financiero de recepción del dinero (Efectivo, Depósito, Yape). @example Depósito
+            // Canal financiero de recepción del dinero. @example Depósito
             'metodo_pago'      => ['required', 'string', 'max:255'],
 
             // Control de flujo de caja de la venta (pagado, pendiente). @example pagado
             'estado_pago'      => ['required', 'string', 'max:255'],
 
-            // Estructura indexada del carrito de compras (Despacho de café/cacao).
+            // Estructura indexada del carrito de compras.
             'items'              => ['required', 'array', 'min:1'],
 
             // ID del producto agrícola en almacén. @example 1
