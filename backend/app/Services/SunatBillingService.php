@@ -39,7 +39,7 @@ class SunatBillingService
             'client' => [
                 'tipoDoc' => $invoice->cliente_tipo_documento, // '1' (DNI), '6' (RUC)
                 'numDoc'  => $invoice->cliente_numero_documento,
-                'rznSocial'=> $invoice->cliente_denominacion,
+                'rznSocial' => $invoice->cliente_denominacion,
                 'address' => [
                     'direccion' => $invoice->cliente_direccion ?? '-'
                 ]
@@ -47,13 +47,13 @@ class SunatBillingService
             // Los datos de tu empresa emisora configurados
             'company' => [
                 'ruc'             => 10759566314, // 🛠️ CAMBIA POR TU RUC REAL
-                'razonSocial'     => 'Comercializadora san felipe', 
+                'razonSocial'     => 'Comercializadora san felipe',
                 'nombreComercial' => 'Cafe y cacao san felipe',
                 'address'         => [
                     'direccion' => 'Peca'
                 ]
             ],
-            
+
             // 🚀 REGLAS DE ORO: AMAZONÍA EXONERADA
             'mtoOperGravadas'    => 0,
             'mtoOperExoneradas'  => (float)$invoice->total_op_exonerada, // El dinero va aquí
@@ -62,12 +62,12 @@ class SunatBillingService
             'totalImpuestos'     => 0,
             'subTotal'           => (float)$invoice->total_pagar,
             'mtoImpVenta'        => (float)$invoice->total_pagar,
-            
+
             'details' => $this->mapItems($invoice),
             'legends' => [
                 [
                     'code' => '2001',
-                    'value'=> 'BIENES TRANSFERIDOS EN LA AMAZONÍA PARA SER CONSUMIDOS EN LA MISMA'
+                    'value' => 'BIENES TRANSFERIDOS EN LA AMAZONÍA PARA SER CONSUMIDOS EN LA MISMA'
                 ]
             ]
         ];
@@ -88,16 +88,18 @@ class SunatBillingService
             // 3. Evaluar la respuesta devuelta por ApisPerú/SUNAT
             if (isset($data['sunatResponse']) && $data['sunatResponse']['success'] === true) {
                 $cdr = $data['sunatResponse']['cdrResponse'] ?? [];
+
                 return [
-                    'invoice_accepted' => $cdr['accepted'] ?? false,
+                    // Si sunatResponse->success es true, el CPE fue procesado. 
+                    // Adicionalmente, verificamos que el código de SUNAT sea '0' (Aceptado)
+                    'invoice_accepted' => ($cdr['code'] ?? null) === '0',
                     'description'      => $cdr['description'] ?? 'Aceptado por SUNAT',
                     'xml'              => $data['xml'] ?? null,
                     'hash'             => $data['hash'] ?? null,
-                    'cdr_zip'          => $data['sunatResponse']['cdrZip'] ?? null,
+                    'cdr_zip'          => $data['sunatResponse']['cdrZip'] ?? null, // Normalizado para el retorno de este método
                 ];
             }
 
-            // Manejo cuando ApisPerú o SUNAT detectan un rechazo explícito o error de validación
             $errorMsg = $data['sunatResponse']['error']['message'] ?? 'Error desconocido en validación SUNAT.';
             return [
                 'invoice_accepted' => false,
@@ -106,7 +108,6 @@ class SunatBillingService
                 'hash'             => null,
                 'cdr_zip'          => null,
             ];
-
         } catch (Exception $e) {
             Log::critical('Excepción al conectar con ApisPerú: ' . $e->getMessage());
             throw $e;
@@ -126,7 +127,7 @@ class SunatBillingService
                 'descripcion'      => $item->descripcion,
                 'cantidad'         => (float)$item->cantidad,
                 'mtoValorUnitario' => (float)$item->valor_unitario,
-                'mtoPrecioUnitario'=> (float)$item->precio_unitario,
+                'mtoPrecioUnitario' => (float)$item->precio_unitario,
                 'mtoValorVenta'    => (float)$item->subtotal,
                 'mtoBaseIgv'       => (float)$item->subtotal,
                 'porcentajeIgv'    => 0,
