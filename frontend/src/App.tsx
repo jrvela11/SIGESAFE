@@ -16,6 +16,7 @@ import { SeguimientosView } from "./app/dashboard/envios/SeguimientosView";
 import { ComprasView } from "./app/dashboard/compras/ComprasView";
 import { PuntoCompraView } from "./app/dashboard/punto-compra/PuntoCompraView";
 import { KardexView } from "./app/kardex/KardexView";
+import { ReportesView } from "./app/dashboard/reportes/ReportesView";
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/compras" element={<ComprasView />} />
         <Route path="/punto-compra" element={<PuntoCompraView />} />
         <Route path="/kardex" element={<KardexView />} />
+        <Route path="/reportes" element={<ReportesView />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       
       </Routes>

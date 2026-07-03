@@ -43,6 +43,7 @@ const MENU_GROUPS = [
   {
     title: "Sistema",
     items: [
+      { name: "Reportes", icon: Search, path: "/reportes" },
       { name: "Auditoría", icon: History, path: "/auditoria" },
       { name: "Ajustes", icon: Settings, path: "/ajustes" },
     ],

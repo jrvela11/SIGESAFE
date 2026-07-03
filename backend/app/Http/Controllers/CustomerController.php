@@ -18,38 +18,17 @@ class CustomerController extends Controller
     public function index(Request $request)
     {
         $customers = Customer::all();
-
         return new CustomerCollection($customers);
     }
 
-    public function store(CustomerStoreRequest $request, GeocodingService $geoService)
+    public function store(CustomerStoreRequest $request)
     {
-        // 1. Obtenemos los datos ya validados
         $data = $request->validated();
+        
+        // Asignamos las coordenadas de forma segura
+        $data = $this->asignarCoordenadas($data);
 
-        // 2. Construimos una cadena libre (Free-form query) bien formateada
-        // Ejemplo resultante: "Calle Cahuide 385, Bagua, Bagua, Amazonas"
-        $direccionCompleta = sprintf(
-            '%s, %s, %s, %s',
-            $data['direccion'] ?? '',    // Tu calle y número ("Cahuide 385")
-            $data['distrito'] ?? '',     // "Bagua"
-            $data['provincia'] ?? '',    // "Bagua"
-            $data['departamento'] ?? ''  // "Amazonas"
-        );
-
-        // 3. Consultamos usando tu función existente 'obtenerCoordenadas'
-        $coordenadas = $geoService->obtenerCoordenadas($direccionCompleta);
-
-        // 4. Si la API de OpenStreetMap devuelve las coordenadas, las asignamos
-        if ($coordenadas) {
-            $data['latitud'] = $coordenadas['latitud'];
-            $data['longitud'] = $coordenadas['longitud'];
-        }
-
-        // 5. Creamos el registro en la base de datos
         $customer = Customer::create($data);
-
-        // 6. Retornamos la respuesta mapeada con el Resource
         return new CustomerResource($customer);
     }
 
@@ -60,35 +39,30 @@ class CustomerController extends Controller
 
     public function update(CustomerUpdateRequest $request, Customer $customer)
     {
-        $customer->update($request->validated());
+        $data = $request->validated();
+        
+        // Al actualizar también recalculamos las coordenadas
+        $data = $this->asignarCoordenadas($data);
 
+        $customer->update($data);
         return new CustomerResource($customer);
     }
 
     public function destroy(Request $request, Customer $customer): Response
     {
         $customer->delete();
-
         return response()->noContent();
     }
 
-
-
     public function verifyDocument(Request $request, DocumentService $documentService): JsonResponse
     {
-        // 1. Validamos parámetros
         $request->validate([
             'tipo'   => 'required|string|in:dni,ruc,DNI,RUC',
             'numero' => 'required|string|digits_between:8,11',
         ]);
 
-        // 2. Ejecutamos la consulta mediante el servicio
-        $resultado = $documentService->consultar(
-            $request->input('tipo'),
-            $request->input('numero')
-        );
+        $resultado = $documentService->consultar($request->input('tipo'), $request->input('numero'));
 
-        // 3. Si la API externa falla o no encuentra el documento
         if (!$resultado) {
             return response()->json([
                 'success' => false,
@@ -96,10 +70,49 @@ class CustomerController extends Controller
             ], 404);
         }
 
-        // 4. Retornamos los datos limpios mapeados por tu servicio
         return response()->json([
             'success' => true,
             'data'    => $resultado
         ]);
+    }
+
+    private function asignarCoordenadas(array $data): array
+    {
+        // Llamamos al servicio internamente para no romper la inyección de rutas
+        $geoService = app(GeocodingService::class);
+
+        $distrito = $data['distrito'] ?? '';
+        $provincia = $data['provincia'] ?? '';
+        $departamento = $data['departamento'] ?? '';
+        $calle = preg_replace('/,+/', ',', $data['direccion'] ?? '');
+
+        // Plan A: Dirección completa + Perú
+        $queryA = trim("$calle, $distrito, $departamento, Perú", ', ');
+        $queryA = preg_replace('/,+/', ',', $queryA);
+        $coordenadas = $geoService->obtenerCoordenadas($queryA);
+
+        // Plan B: Si la calle tiene formato raro y falla, buscamos solo el distrito
+        if (!$coordenadas && !empty($distrito)) {
+            $queryB = trim("$distrito, $provincia, $departamento, Perú", ', ');
+            $queryB = preg_replace('/,+/', ',', $queryB);
+            $coordenadas = $geoService->obtenerCoordenadas($queryB);
+        }
+
+        // Plan C: Si el distrito es remoto y no aparece, ubicamos en el departamento
+        if (!$coordenadas && !empty($departamento)) {
+            $queryC = trim("$departamento, Perú", ', ');
+            $coordenadas = $geoService->obtenerCoordenadas($queryC);
+        }
+
+        if ($coordenadas) {
+            $data['latitud'] = $coordenadas['latitud'];
+            $data['longitud'] = $coordenadas['longitud'];
+        } else {
+            // Si el mapa rechaza todas las opciones, forzamos null
+            $data['latitud'] = null;
+            $data['longitud'] = null;
+        }
+
+        return $data;
     }
 }

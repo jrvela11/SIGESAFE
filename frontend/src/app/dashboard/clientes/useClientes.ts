@@ -55,7 +55,6 @@ export const useClientes = () => {
       const response = await fetch("/api/customers", { headers: { Accept: "application/json" } });
       if (response.ok) {
         const json = await response.json();
-        // Dependiendo de cómo devuelva CustomerCollection (generalmente json.data)
         setClientes(json.data || json);
       }
     } catch (error) {
@@ -151,9 +150,14 @@ export const useClientes = () => {
       if (res.success && res.data) {
         setFormData(prev => ({
           ...prev,
-          nombre: res.data.nombre || prev.nombre,
+          // RUC devuelve razon_social, DNI devuelve nombre. Atrapamos ambos.
+          nombre: res.data.razon_social || res.data.nombre || prev.nombre,
           apellido: res.data.apellido || prev.apellido,
           direccion: res.data.direccion || prev.direccion,
+          // Aseguramos atrapar la ubicación
+          distrito: res.data.distrito || prev.distrito,
+          provincia: res.data.provincia || prev.provincia,
+          departamento: res.data.departamento || prev.departamento,
         }));
         toast.success("Datos obtenidos correctamente");
       } else {
