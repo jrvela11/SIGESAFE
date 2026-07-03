@@ -10,7 +10,7 @@ export interface MovimientoKardex {
   cantidad: number;
   descripcion: string;
   fecha: string;
-  saldoAcumulado?: number; // Lo calculamos en el frontend
+  saldoAcumulado?: number; 
 }
 
 export const useKardex = () => {
@@ -34,11 +34,14 @@ export const useKardex = () => {
         if (resMovs.ok && resProds.ok) {
           const jsonMovs = await resMovs.json();
           const jsonProds = await resProds.json();
-          setMovimientos(jsonMovs.data);
-          setProductos(jsonProds.data);
+          // Agregamos el fallback || [] por si la data viene vacía
+          setMovimientos(jsonMovs.data || []);
+          setProductos(jsonProds.data || []);
+        } else {
+          toast.error("Error en la respuesta del servidor.");
         }
       } catch (error) {
-        toast.error("Error al cargar el Kardex.");
+        toast.error("Error de red al cargar el Kardex.");
       } finally {
         setCargando(false);
       }
@@ -52,7 +55,8 @@ export const useKardex = () => {
 
     let saldo = 0;
     const movimientosFiltrados = movimientos
-      .filter(m => m.product_id.toString() === productoSeleccionado)
+      // PROTECCIÓN: Verificamos que product_id exista antes de convertir a String
+      .filter(m => m.product_id && String(m.product_id) === productoSeleccionado)
       .map(m => {
         if (m.tipo === "entrada") saldo += m.cantidad;
         if (m.tipo === "salida") saldo -= m.cantidad;

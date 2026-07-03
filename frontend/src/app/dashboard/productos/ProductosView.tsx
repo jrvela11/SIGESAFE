@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState } from "react";
 import { DashboardLayout } from "../dashboard/DashboardLayout";
 import { useProductos } from "./useProductos";
 import {
@@ -182,8 +182,8 @@ const ProductRow: React.FC<{
           {prod.stock_actual} <span className="font-medium opacity-80">{prod.unidad_medida}</span>
         </span>
       </td>
-      <td className="px-5 py-3 text-right">
-        <div className="flex items-center justify-end gap-1.5">
+      <td className="px-5 py-3">
+        <div className="flex items-center justify-end gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
           {prod.estado ? (
             <>
               <button onClick={onEdit}
@@ -221,81 +221,47 @@ const CardSkeleton = () => (
 );
 
 const TableSkeleton = () => (
-  <div className="bg-white rounded-2xl border border-[#EDE8E1] p-6 space-y-4 animate-pulse">
-    {Array.from({ length: 5 }).map((_, i) => (
-      <div key={i} className="flex items-center gap-4">
-        <div className="w-10 h-10 bg-[#F7F5F2] rounded-lg shrink-0" />
-        <div className="flex-1 space-y-2">
-          <div className="h-3.5 bg-[#F0EBE4] rounded w-40" />
-          <div className="h-2.5 bg-[#F0EBE4] rounded w-24" />
+  <div className="bg-white rounded-2xl border border-[#EDE8E1] shadow-sm overflow-hidden flex flex-col animate-pulse">
+    <div className="overflow-auto max-h-[300px] p-6 space-y-4">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-[#F7F5F2] rounded-lg shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3.5 bg-[#F0EBE4] rounded w-40" />
+            <div className="h-2.5 bg-[#F0EBE4] rounded w-24" />
+          </div>
+          <div className="h-3.5 bg-[#F0EBE4] rounded w-20" />
+          <div className="h-6 bg-[#F0EBE4] rounded-full w-16" />
         </div>
-        <div className="h-3.5 bg-[#F0EBE4] rounded w-20" />
-        <div className="h-6 bg-[#F0EBE4] rounded-full w-16" />
-      </div>
-    ))}
+      ))}
+    </div>
   </div>
 );
 
 // ─── Vista principal ───────────────────────────────────────────────────────
-const POR_PAGINA = 10;
 
 export const ProductosView = () => {
   const p = useProductos();
   const [vista, setVista] = useState<"grid" | "list">("grid");
-  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
-
-  const filtrados = useMemo(() => {
-    return p.productos.filter((prod) => {
-      const okEstado = p.filtroEstado === "activos" ? prod.estado : !prod.estado;
-      const okCategoria = filtroCategoria === "" || prod.category_id.toString() === filtroCategoria;
-      
-      // Buscar el nombre de la categoría mapeando el ID
-      const catAsociada = p.categoriasLista.find(c => c.id === prod.category_id);
-      const catNombre = catAsociada ? catAsociada.nombre.toLowerCase() : "";
-
-      const t = p.busqueda.toLowerCase();
-      const okBusqueda =
-        prod.nombre.toLowerCase().includes(t) ||
-        prod.sku.toLowerCase().includes(t) ||
-        catNombre.includes(t);
-        
-      return okEstado && okCategoria && okBusqueda;
-    });
-  }, [p.productos, p.filtroEstado, p.busqueda, filtroCategoria, p.categoriasLista]);
-
-  const totalPaginas = Math.ceil(filtrados.length / POR_PAGINA) || 1;
-  const paginaAjustada = Math.min(p.pagina, totalPaginas);
-  const productosPaginados = filtrados.slice(
-    (paginaAjustada - 1) * POR_PAGINA,
-    paginaAjustada * POR_PAGINA
-  );
-
-  useEffect(() => {
-    p.setPagina(1);
-  }, [p.filtroEstado, p.busqueda, filtroCategoria]);
-
-  const alertas = p.productos.filter(pr => pr.estado && pr.stock_actual <= pr.stock_minimo).length;
-  const costoTotal = p.productos.filter(pr => pr.estado).reduce((acc, pr) => acc + pr.precio_compra * pr.stock_actual, 0);
-  const totalActivos = p.productos.filter(pr => pr.estado).length;
 
   const Paginador = () => {
-    if (totalPaginas <= 1) return null;
+    if (p.totalPaginas <= 1) return null;
     return (
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => p.setPagina(Math.max(1, p.pagina - 1))}
-          disabled={paginaAjustada === 1}
+          disabled={p.paginaAjustada === 1}
           className="w-7 h-7 rounded-md bg-white border border-[#EDE8E1] flex items-center justify-center text-[#7A6E65] hover:bg-[#F7F5F2] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
 
-        {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((n) => (
+        {Array.from({ length: p.totalPaginas }, (_, i) => i + 1).map((n) => (
           <button
             key={n}
             onClick={() => p.setPagina(n)}
             className={`w-7 h-7 rounded-md text-[11.5px] font-bold transition-all ${
-              paginaAjustada === n
+              p.paginaAjustada === n
                 ? "bg-[#C17B2A] text-white border border-[#C17B2A]"
                 : "bg-white text-[#5A4A3C] border border-[#EDE8E1] hover:bg-[#F7F5F2]"
             }`}
@@ -305,18 +271,14 @@ export const ProductosView = () => {
         ))}
 
         <button
-          onClick={() => p.setPagina(Math.min(totalPaginas, p.pagina + 1))}
-          disabled={paginaAjustada === totalPaginas}
+          onClick={() => p.setPagina(Math.min(p.totalPaginas, p.pagina + 1))}
+          disabled={p.paginaAjustada === p.totalPaginas}
           className="w-7 h-7 rounded-md bg-white border border-[#EDE8E1] flex items-center justify-center text-[#7A6E65] hover:bg-[#F7F5F2] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
     );
-  };
-
-  const getNombreCat = (id: number) => {
-    return p.categoriasLista.find(c => c.id === id)?.nombre || "Sin Categoría";
   };
 
   return (
@@ -349,19 +311,19 @@ export const ProductosView = () => {
               <Package className="w-5 h-5 text-[#C17B2A]" />
             </div>
             <div>
-              <p className="text-[22px] font-black text-[#1C0F05] leading-none">{totalActivos}</p>
+              <p className="text-[22px] font-black text-[#1C0F05] leading-none">{p.totalActivos}</p>
               <p className="text-[11px] text-[#9A8E82] mt-1 font-medium">Productos activos</p>
             </div>
           </div>
           
-          <div className={`rounded-xl border p-4 flex items-center gap-3.5 ${alertas > 0 ? "bg-[#FCEBEB] border-[#F7C1C1]" : "bg-white border-[#EDE8E1]"}`}>
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${alertas > 0 ? "bg-[#FAD4D4]" : "bg-[#EDFBF3]"}`}>
-              {alertas > 0 ? <AlertTriangle className="w-5 h-5 text-[#8B2020]" /> : <CheckCircle className="w-5 h-5 text-[#0D7A3E]" />}
+          <div className={`rounded-xl border p-4 flex items-center gap-3.5 ${p.alertas > 0 ? "bg-[#FCEBEB] border-[#F7C1C1]" : "bg-white border-[#EDE8E1]"}`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${p.alertas > 0 ? "bg-[#FAD4D4]" : "bg-[#EDFBF3]"}`}>
+              {p.alertas > 0 ? <AlertTriangle className="w-5 h-5 text-[#8B2020]" /> : <CheckCircle className="w-5 h-5 text-[#0D7A3E]" />}
             </div>
             <div>
-              <p className={`text-[22px] font-black leading-none ${alertas > 0 ? "text-[#8B2020]" : "text-[#1C0F05]"}`}>{alertas}</p>
-              <p className={`text-[11px] mt-1 font-medium ${alertas > 0 ? "text-[#B73D3D]" : "text-[#9A8E82]"}`}>
-                {alertas > 0 ? "Con stock bajo" : "Sin alertas de stock"}
+              <p className={`text-[22px] font-black leading-none ${p.alertas > 0 ? "text-[#8B2020]" : "text-[#1C0F05]"}`}>{p.alertas}</p>
+              <p className={`text-[11px] mt-1 font-medium ${p.alertas > 0 ? "text-[#B73D3D]" : "text-[#9A8E82]"}`}>
+                {p.alertas > 0 ? "Con stock bajo" : "Sin alertas de stock"}
               </p>
             </div>
           </div>
@@ -371,7 +333,7 @@ export const ProductosView = () => {
               <TrendingUp className="w-5 h-5 text-[#7A6E65]" />
             </div>
             <div className="min-w-0">
-              <p className="text-[20px] font-black text-[#1C0F05] leading-none truncate">{sol(costoTotal)}</p>
+              <p className="text-[20px] font-black text-[#1C0F05] leading-none truncate">{sol(p.costoTotal)}</p>
               <p className="text-[11px] text-[#9A8E82] mt-1 font-medium">Valor ref. inventario</p>
             </div>
           </div>
@@ -395,7 +357,7 @@ export const ProductosView = () => {
             <div className="hidden sm:block w-px h-5 bg-[#EDE8E1] shrink-0" />
             <div className="flex items-center px-2 w-full sm:w-auto pb-1 sm:pb-0">
               <Filter className="w-3.5 h-3.5 text-[#B5A99E] shrink-0 mr-2 hidden sm:block" />
-              <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}
+              <select value={p.filtroCategoria} onChange={(e) => p.setFiltroCategoria(e.target.value)}
                 className="bg-transparent text-[11.5px] text-[#7A6E65] font-semibold outline-none cursor-pointer w-full sm:w-auto py-1">
                 <option value="">Todas las categorías</option>
                 {p.categoriasLista.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -434,61 +396,66 @@ export const ProductosView = () => {
               {Array.from({ length: 10 }).map((_, i) => <CardSkeleton key={i} />)}
             </div>
           ) : <TableSkeleton />
-        ) : productosPaginados.length === 0 ? (
+        ) : p.productosPaginados.length === 0 ? (
           <div className="bg-white rounded-2xl border border-[#EDE8E1] py-20 flex flex-col items-center gap-4 shadow-sm">
             <div className="w-16 h-16 rounded-2xl bg-[#F7F5F2] border border-[#EDE8E1] flex items-center justify-center">
               <Coffee className="w-7 h-7 text-[#C0B4AA]" />
             </div>
             <div className="text-center px-4">
               <p className="text-[#1C0F05] font-bold text-[15px]">
-                {p.busqueda || filtroCategoria ? "Sin resultados" : "No hay productos"}
+                {p.busqueda || p.filtroCategoria ? "Sin resultados" : "No hay productos"}
               </p>
               <p className="text-[#9A8E82] text-[12.5px] mt-1 max-w-xs">
-                {p.busqueda || filtroCategoria ? "Intenta con otros términos de búsqueda." : "Agrega el primer producto al catálogo."}
+                {p.busqueda || p.filtroCategoria ? "Intenta con otros términos de búsqueda." : "Agrega el primer producto al catálogo."}
               </p>
             </div>
           </div>
         ) : vista === "grid" ? (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {productosPaginados.map((prod) => (
-                <ProductCard key={prod.id} prod={prod} catNombre={getNombreCat(prod.category_id)}
+              {p.productosPaginados.map((prod) => (
+                <ProductCard key={prod.id} prod={prod} catNombre={p.getNombreCat(prod.category_id)}
                   onEdit={() => p.abrirModalEditar(prod)}
                   onDelete={() => p.handleEliminar(prod.id, prod.nombre)}
                   onReactivar={() => p.handleReactivar(prod.id)}
                 />
               ))}
             </div>
-            {totalPaginas > 1 && (
+            {p.totalPaginas > 1 && (
               <div className="flex justify-center mt-6">
                 <Paginador />
               </div>
             )}
           </>
         ) : (
-          <div className="bg-white rounded-xl border border-[#EDE8E1] overflow-hidden">
-            <table className="w-full text-[12.5px]">
-              <thead>
-                <tr className="bg-[#FDFAF7] border-b border-[#EDE8E1]">
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Producto</th>
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Precio</th>
-                  <th className="px-5 py-3 text-center text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Stock</th>
-                  <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F5F0EB]">
-                {productosPaginados.map((prod) => (
-                  <ProductRow key={prod.id} prod={prod} catNombre={getNombreCat(prod.category_id)}
-                    onEdit={() => p.abrirModalEditar(prod)}
-                    onDelete={() => p.handleEliminar(prod.id, prod.nombre)}
-                    onReactivar={() => p.handleReactivar(prod.id)}
-                  />
-                ))}
-              </tbody>
-            </table>
-            <div className="px-5 py-2.5 bg-[#FDFAF7] border-t border-[#EDE8E1] flex items-center justify-between">
+          <div className="bg-white rounded-xl border border-[#EDE8E1] shadow-sm flex flex-col overflow-hidden">
+            {/* Contenedor del scroll de la tabla (Altura máxima de 300px) */}
+            <div className="overflow-auto max-h-[300px]">
+              <table className="w-full text-[12.5px] text-left relative">
+                <thead className="sticky top-0 z-10 shadow-[0_1px_0_#EDE8E1]">
+                  <tr className="bg-[#FDFAF7]">
+                    <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Producto</th>
+                    <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Precio</th>
+                    <th className="px-5 py-3 text-center text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Stock</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F5F0EB]">
+                  {p.productosPaginados.map((prod) => (
+                    <ProductRow key={prod.id} prod={prod} catNombre={p.getNombreCat(prod.category_id)}
+                      onEdit={() => p.abrirModalEditar(prod)}
+                      onDelete={() => p.handleEliminar(prod.id, prod.nombre)}
+                      onReactivar={() => p.handleReactivar(prod.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer de tabla (Paginador) */}
+            <div className="px-5 py-2.5 bg-[#FDFAF7] border-t border-[#EDE8E1] flex items-center justify-between shrink-0">
               <span className="text-[11px] text-[#9A8E82]">
-                {filtrados.length} producto{filtrados.length !== 1 ? "s" : ""}
+                {p.productosFiltrados.length} producto{p.productosFiltrados.length !== 1 ? "s" : ""}
               </span>
               <Paginador />
             </div>

@@ -14,20 +14,8 @@ export interface Cliente {
   provincia: string | null;
   departamento: string | null;
   estado: boolean;
-}
-
-export interface ClienteFormData {
-  tipo_documento: string;
-  numero_documento: string;
-  nombre: string;
-  apellido: string;
-  email: string;
-  telefono: string;
-  direccion: string;
-  distrito: string;
-  provincia: string;
-  departamento: string;
-  estado: boolean;
+  latitud?: number | null;
+  longitud?: number | null;
 }
 
 export const useClientes = () => {
@@ -38,9 +26,10 @@ export const useClientes = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [consultandoDoc, setConsultandoDoc] = useState(false);
   const [clienteAEditar, setClienteAEditar] = useState<Cliente | null>(null);
 
-  const [formData, setFormData] = useState<ClienteFormData>({
+  const [formData, setFormData] = useState({
     tipo_documento: "",
     numero_documento: "",
     nombre: "",
@@ -48,14 +37,14 @@ export const useClientes = () => {
     email: "",
     telefono: "",
     direccion: "",
-    distrito: "",    
-    provincia: "",    
-    departamento: "", 
+    distrito: "",
+    provincia: "",
+    departamento: "",
     estado: true,
   });
 
   const [errores, setErrores] = useState<Record<string, string>>({});
-
+  
   const POR_PAGINA = 10;
   const [pagina, setPagina] = useState(1);
 
@@ -63,15 +52,13 @@ export const useClientes = () => {
   const fetchClientes = async () => {
     try {
       setCargando(true);
-      const response = await fetch("/api/customers", {
-        headers: { Accept: "application/json" }
-      });
+      const response = await fetch("/api/customers", { headers: { Accept: "application/json" } });
       if (response.ok) {
         const json = await response.json();
-        setClientes(json.data);
+        setClientes(json.data || json);
       }
     } catch (error) {
-      toast.error("Error al cargar clientes desde el servidor.");
+      toast.error("Error al cargar clientes.");
     } finally {
       setCargando(false);
     }
@@ -81,21 +68,12 @@ export const useClientes = () => {
     fetchClientes();
   }, []);
 
-  // --- MANEJO DEL FORMULARIO Y MODAL ---
+  // --- MANEJO DEL MODAL ---
   const abrirModalCrear = () => {
     setClienteAEditar(null);
     setFormData({
-      tipo_documento: "",
-      numero_documento: "",
-      nombre: "",
-      apellido: "",
-      email: "",
-      telefono: "",
-      direccion: "",
-      distrito: "",    
-      provincia: "",    
-      departamento: "", 
-      estado: true,
+      tipo_documento: "", numero_documento: "", nombre: "", apellido: "",
+      email: "", telefono: "", direccion: "", distrito: "", provincia: "", departamento: "", estado: true,
     });
     setErrores({});
     setIsModalOpen(true);
@@ -106,14 +84,14 @@ export const useClientes = () => {
     setFormData({
       tipo_documento: cliente.tipo_documento || "",
       numero_documento: cliente.numero_documento || "",
-      nombre: cliente.nombre,
+      nombre: cliente.nombre || "",
       apellido: cliente.apellido || "",
       email: cliente.email || "",
       telefono: cliente.telefono || "",
       direccion: cliente.direccion || "",
-      distrito: cliente.distrito || "",    
-      provincia: cliente.provincia || "",    
-      departamento: cliente.departamento || "", 
+      distrito: cliente.distrito || "",
+      provincia: cliente.provincia || "",
+      departamento: cliente.departamento || "",
       estado: cliente.estado,
     });
     setErrores({});
@@ -126,15 +104,15 @@ export const useClientes = () => {
     setErrores({});
   };
 
-  const handleChange = (field: keyof ClienteFormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrores((prev) => ({ ...prev, [field]: "" }));
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setErrores(prev => ({ ...prev, [field]: "" }));
   };
 
   const handleTelefonoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const soloNumeros = e.target.value.replace(/\D/g, "");
     if (soloNumeros.length <= 9) setFormData({ ...formData, telefono: soloNumeros });
-    setErrores((prev) => ({ ...prev, telefono: "" }));
+    setErrores(prev => ({ ...prev, telefono: "" }));
   };
 
   const handleNumeroDocumentoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,7 +126,48 @@ export const useClientes = () => {
     } else {
       setFormData({ ...formData, numero_documento: value.toUpperCase().slice(0, 20) });
     }
-    setErrores((prev) => ({ ...prev, numero_documento: "" }));
+    setErrores(prev => ({ ...prev, numero_documento: "" }));
+  };
+
+  // --- CONSULTAR DOCUMENTO (API Externa) ---
+  const buscarDocumento = async () => {
+    if (!formData.tipo_documento || !formData.numero_documento) {
+      toast.warning("Seleccione el tipo y escriba el número de documento");
+      return;
+    }
+    
+    const tipo = formData.tipo_documento.toLowerCase();
+    if (tipo !== "dni" && tipo !== "ruc") return;
+
+    setConsultandoDoc(true);
+    try {
+      const response = await fetch(`/api/customers/verify-document?tipo=${tipo}&numero=${formData.numero_documento}`, {
+        headers: { Accept: "application/json" }
+      });
+      
+      const res = await response.json();
+      
+      if (res.success && res.data) {
+        setFormData(prev => ({
+          ...prev,
+          // RUC devuelve razon_social, DNI devuelve nombre. Atrapamos ambos.
+          nombre: res.data.razon_social || res.data.nombre || prev.nombre,
+          apellido: res.data.apellido || prev.apellido,
+          direccion: res.data.direccion || prev.direccion,
+          // Aseguramos atrapar la ubicación
+          distrito: res.data.distrito || prev.distrito,
+          provincia: res.data.provincia || prev.provincia,
+          departamento: res.data.departamento || prev.departamento,
+        }));
+        toast.success("Datos obtenidos correctamente");
+      } else {
+        toast.error(res.message || "No se encontraron datos");
+      }
+    } catch (error) {
+      toast.error("Error al consultar el documento.");
+    } finally {
+      setConsultandoDoc(false);
+    }
   };
 
   // --- GUARDAR O ACTUALIZAR ---
@@ -159,16 +178,12 @@ export const useClientes = () => {
 
     const url = clienteAEditar ? `/api/customers/${clienteAEditar.id}` : "/api/customers";
     const method = clienteAEditar ? "PUT" : "POST";
-    const payload = { ...formData };
 
     try {
       const response = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
@@ -187,11 +202,11 @@ export const useClientes = () => {
         throw new Error("Error en el servidor");
       }
 
-      toast.success(clienteAEditar ? "Cliente actualizado exitosamente" : "Cliente registrado exitosamente");
+      toast.success(clienteAEditar ? "Cliente actualizado" : "Cliente registrado");
       await fetchClientes();
       cerrarModal();
     } catch (error) {
-      toast.error("Hubo un problema de conexión al guardar el cliente.");
+      toast.error("Hubo un problema de conexión al guardar.");
     } finally {
       setGuardando(false);
     }
@@ -201,13 +216,9 @@ export const useClientes = () => {
   const cambiarEstado = async (cliente: Cliente, nuevoEstado: boolean) => {
     try {
       const payload = { ...cliente, estado: nuevoEstado };
-      
       const response = await fetch(`/api/customers/${cliente.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(payload),
       });
 
@@ -215,7 +226,7 @@ export const useClientes = () => {
         toast.success(nuevoEstado ? "Cliente reactivado" : "Cliente suspendido");
         await fetchClientes();
       } else {
-        toast.error("No se pudo cambiar el estado del cliente.");
+        toast.error("No se pudo cambiar el estado.");
       }
     } catch (error) {
       toast.error("Error de conexión.");
@@ -223,14 +234,14 @@ export const useClientes = () => {
   };
 
   const handleDesactivar = (id: number, nombre: string) => {
-    if (window.confirm(`¿Estás seguro de suspender al cliente ${nombre}?`)) {
-      const cliente = clientes.find((c) => c.id === id);
+    if (window.confirm(`¿Suspender al cliente "${nombre}"?`)) {
+      const cliente = clientes.find((p) => p.id === id);
       if (cliente) cambiarEstado(cliente, false);
     }
   };
 
   const handleReactivar = (id: number) => {
-    const cliente = clientes.find((c) => c.id === id);
+    const cliente = clientes.find((p) => p.id === id);
     if (cliente) cambiarEstado(cliente, true);
   };
 
@@ -238,20 +249,18 @@ export const useClientes = () => {
   const clientesFiltrados = useMemo(() => {
     return clientes.filter((c) => {
       const coincideEstado = filtroEstado === "activos" ? c.estado : !c.estado;
-      const textoBusqueda = busqueda.toLowerCase();
+      const texto = busqueda.toLowerCase();
       const coincideBusqueda =
-        c.nombre.toLowerCase().includes(textoBusqueda) ||
-        (c.apellido && c.apellido.toLowerCase().includes(textoBusqueda)) ||
-        (c.email && c.email.toLowerCase().includes(textoBusqueda)) ||
-        (c.numero_documento && c.numero_documento.includes(textoBusqueda));
-        
+        c.nombre.toLowerCase().includes(texto) ||
+        (c.apellido && c.apellido.toLowerCase().includes(texto)) ||
+        (c.numero_documento && c.numero_documento.includes(texto));
       return coincideEstado && coincideBusqueda;
     });
   }, [clientes, busqueda, filtroEstado]);
 
   const totalClientes = clientes.length;
-  const clientesActivos = clientes.filter((c) => c.estado).length;
-  const clientesConTelefono = clientes.filter((c) => c.telefono).length;
+  const clientesActivos = clientes.filter(c => c.estado).length;
+  const clientesConTelefono = clientes.filter(c => c.telefono).length;
 
   const totalPaginas = Math.ceil(clientesFiltrados.length / POR_PAGINA) || 1;
   const paginaAjustada = Math.min(pagina, totalPaginas);
@@ -266,34 +275,11 @@ export const useClientes = () => {
   }, [paginaAjustada, pagina]);
 
   return {
-    clientes,
-    cargando,
-    filtroEstado,
-    setFiltroEstado,
-    busqueda,
-    setBusqueda,
-    isModalOpen,
-    guardando,
-    clienteAEditar,
-    formData,
-    handleChange,
-    handleTelefonoChange,
-    handleNumeroDocumentoChange,
-    handleSubmit,
-    handleDesactivar,
-    handleReactivar,
-    abrirModalCrear,
-    abrirModalEditar,
-    cerrarModal,
-    errores,
-    totalClientes,
-    clientesActivos,
-    clientesConTelefono,
-    clientesFiltrados,
-    clientesPaginados,
-    pagina,
-    setPagina,
-    totalPaginas,
-    paginaAjustada,
+    clientesPaginados, clientesFiltrados, cargando, filtroEstado, setFiltroEstado,
+    busqueda, setBusqueda, isModalOpen, guardando, consultandoDoc, clienteAEditar, formData,
+    handleChange, handleTelefonoChange, handleNumeroDocumentoChange, buscarDocumento, handleSubmit,
+    handleDesactivar, handleReactivar, abrirModalCrear, abrirModalEditar, cerrarModal,
+    errores, totalClientes, clientesActivos, clientesConTelefono,
+    pagina, setPagina, totalPaginas, paginaAjustada,
   };
 };

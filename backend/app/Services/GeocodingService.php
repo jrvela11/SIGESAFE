@@ -13,7 +13,10 @@ class GeocodingService
         if (empty($query)) return null;
 
         try {
-            $response = Http::withHeaders(['User-Agent' => 'CafetalERP/1.0'])
+            $response = Http::withHeaders([
+                'User-Agent' => 'CafetalERP/1.0',
+                'Accept' => 'application/json'
+            ])
                 ->timeout(5)
                 ->get('https://nominatim.openstreetmap.org/search', [
                     'q'      => $query,
@@ -21,19 +24,19 @@ class GeocodingService
                     'limit'  => 1,
                 ]);
 
-            if ($response->successful() && count($response->json()) > 0) {
-                $data = $response->json()[0];
+            $json = $response->json();
+
+
+            if ($response->successful() && is_array($json) && count($json) > 0 && isset($json[0]['lat'])) {
                 return [
-                    'latitud'  => (float) $data['lat'],
-                    'longitud' => (float) $data['lon'],
+                    'latitud'  => (float) $json[0]['lat'],
+                    'longitud' => (float) $json[0]['lon'],
                 ];
             }
         } catch (\Exception $e) {
             Log::error('Geocoding error: ' . $e->getMessage());
         }
 
-        return null;
+        return null; // Si falla, devuelve null silenciosamente sin romper el servidor
     }
-
-    
 }

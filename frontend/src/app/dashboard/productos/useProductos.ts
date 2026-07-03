@@ -31,6 +31,7 @@ export const useProductos = () => {
   const [categoriasLista, setCategoriasLista] = useState<Categoria[]>([]);
   const [cargando, setCargando] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState<'activos' | 'inactivos'>('activos');
+  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -38,6 +39,7 @@ export const useProductos = () => {
   const [productoAEditar, setProductoAEditar] = useState<Producto | null>(null);
   const [errores, setErrores] = useState<Record<string, string>>({});
 
+  const POR_PAGINA = 10;
   const [pagina, setPagina] = useState(1);
   
   const [archivoImagen, setArchivoImagen] = useState<File | null>(null);
@@ -114,7 +116,6 @@ export const useProductos = () => {
     try {
       setGuardando(true);
       
-      // Construimos el form-data ya que Laravel lo requiere para recibir archivos
       const formPayload = new FormData();
       formPayload.append("category_id", formData.category_id);
       formPayload.append("sku", formData.sku);
@@ -128,7 +129,6 @@ export const useProductos = () => {
       formPayload.append("stock_minimo", formData.stock_minimo.toString());
       formPayload.append("estado", formData.estado ? "1" : "0");
       
-      // Siempre enviamos esto para que Laravel no rechace la petición (Required en ProductStoreRequest)
       formPayload.append("precio_compra", formData.precio_compra.toString());
       formPayload.append("stock_actual", formData.stock_actual.toString());
 
@@ -139,11 +139,11 @@ export const useProductos = () => {
       let url = "/api/products";
       if (productoAEditar) {
         url = `/api/products/${productoAEditar.id}`;
-        formPayload.append("_method", "PUT"); // Truco de Laravel para PUT con FormData
+        formPayload.append("_method", "PUT");
       }
 
       const response = await fetch(url, {
-        method: "POST", // Siempre POST cuando hay archivos y _method=PUT
+        method: "POST",
         headers: { Accept: "application/json" },
         body: formPayload,
       });
@@ -219,19 +219,10 @@ export const useProductos = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
     
     setFormData({
-      category_id: "",
-      sku: "",
-      codigo_barras: "",
-      nombre: "",
-      descripcion: "",
-      precio_minorista: 0,
-      precio_mayorista: 0,
-      afecto_igv: true,
-      unidad_medida: "Unidades",
-      stock_minimo: 5,
-      estado: true,
-      precio_compra: 0,
-      stock_actual: 0,
+      category_id: "", sku: "", codigo_barras: "", nombre: "", descripcion: "",
+      precio_minorista: 0, precio_mayorista: 0, afecto_igv: true,
+      unidad_medida: "Unidades", stock_minimo: 5, estado: true,
+      precio_compra: 0, stock_actual: 0,
     });
     setIsModalOpen(true);
   };
@@ -274,11 +265,56 @@ export const useProductos = () => {
     if (['e', 'E', '-', '+'].includes(e.key)) e.preventDefault();
   };
 
+  // --- FILTROS Y PAGINACIÓN ---
+  const getNombreCat = (id: number) => {
+    return categoriasLista.find(c => c.id === id)?.nombre || "Sin Categoría";
+  };
+
+  const productosFiltrados = useMemo(() => {
+    return productos.filter((prod) => {
+      const okEstado = filtroEstado === "activos" ? prod.estado : !prod.estado;
+      const okCategoria = filtroCategoria === "" || prod.category_id.toString() === filtroCategoria;
+      
+      const catNombre = getNombreCat(prod.category_id).toLowerCase();
+      const t = busqueda.toLowerCase();
+      const okBusqueda =
+        prod.nombre.toLowerCase().includes(t) ||
+        prod.sku.toLowerCase().includes(t) ||
+        catNombre.includes(t);
+        
+      return okEstado && okCategoria && okBusqueda;
+    });
+  }, [productos, filtroEstado, busqueda, filtroCategoria, categoriasLista]);
+
+  const totalPaginas = Math.ceil(productosFiltrados.length / POR_PAGINA) || 1;
+  const paginaAjustada = Math.min(pagina, totalPaginas);
+  
+  const productosPaginados = useMemo(() => {
+    const inicio = (paginaAjustada - 1) * POR_PAGINA;
+    return productosFiltrados.slice(inicio, inicio + POR_PAGINA);
+  }, [productosFiltrados, paginaAjustada]);
+
+  useEffect(() => {
+    if (pagina !== paginaAjustada) setPagina(paginaAjustada);
+  }, [paginaAjustada, pagina]);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [filtroEstado, busqueda, filtroCategoria]);
+
+  const alertas = productos.filter(pr => pr.estado && pr.stock_actual <= pr.stock_minimo).length;
+  const costoTotal = productos.filter(pr => pr.estado).reduce((acc, pr) => acc + pr.precio_compra * pr.stock_actual, 0);
+  const totalActivos = productos.filter(pr => pr.estado).length;
+
   return {
     productos, categoriasLista, cargando, filtroEstado, setFiltroEstado,
-    busqueda, setBusqueda, isModalOpen, guardando, productoAEditar,
+    busqueda, setBusqueda, filtroCategoria, setFiltroCategoria,
+    isModalOpen, guardando, productoAEditar,
     previewUrl, fileInputRef, formData, setFormData, handleSubmit,
     abrirModalCrear, abrirModalEditar, cerrarModal, handleEliminar, handleReactivar,
-    handleImageChange, preventInvalidNumberInput, errores, pagina, setPagina
+    handleImageChange, preventInvalidNumberInput, errores, 
+    pagina, setPagina, totalPaginas, paginaAjustada,
+    productosFiltrados, productosPaginados, getNombreCat,
+    alertas, costoTotal, totalActivos
   };
 };
