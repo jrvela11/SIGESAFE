@@ -3,161 +3,158 @@ import { DashboardLayout } from "../dashboard/DashboardLayout";
 import { useClientes } from "./useClientes";
 import {
   Plus, Edit, Trash2, Search, X, Save, Users, UserCheck, Phone,
-  MapPin, Mail, RefreshCw, ChevronLeft, ChevronRight, Coffee, FileSearch, CreditCard
+  MapPin, RefreshCw, ChevronLeft, ChevronRight,
+  CreditCard, User, Mail, SearchCode
 } from "lucide-react";
 
-const Label: React.FC<{ children: React.ReactNode; req?: boolean; hint?: string }> = ({ children, req, hint }) => (
+// ─── Sub-componentes de UI ────────────────────────────────────────────────────
+
+const FieldLabel: React.FC<{ children: React.ReactNode; required?: boolean; hint?: string }> = ({ children, required, hint }) => (
   <div className="flex items-center justify-between mb-1.5">
-    <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-      {children}{req && <span className="text-amber-600 ml-0.5">*</span>}
-    </p>
-    {hint && <span className="text-[10px] text-stone-400">{hint}</span>}
+    <span className="text-[10px] font-bold text-[#7A6E65] uppercase tracking-[0.8px]">
+      {children}
+      {required && <span className="text-[#C17B2A] ml-0.5">*</span>}
+    </span>
+    {hint && <span className="text-[10px] text-[#B5A99E]">{hint}</span>}
   </div>
 );
 
-const inputClass =
-  "w-full px-3.5 py-2.5 rounded-xl border border-stone-200 bg-white text-sm text-stone-800 " +
-  "outline-none transition focus:border-amber-700 focus:ring-2 focus:ring-amber-700/15 " +
-  "placeholder:text-stone-300";
-const errorInputClass = "border-red-300 focus:border-red-500 focus:ring-red-500/15";
+const inputBase =
+  "w-full px-3 py-2.5 rounded-lg border border-[#DDD5CB] bg-[#FDFAF7] text-[12.5px] " +
+  "text-[#2C1A0E] outline-none transition focus:border-[#C17B2A] focus:ring-2 " +
+  "focus:ring-[#C17B2A]/15 placeholder:text-[#C0B4AA]";
+
+const inputError = "border-red-300 focus:border-red-500 focus:ring-red-500/15";
+
+// ─── Vista principal ──────────────────────────────────────────────────────────
 
 export const ClientesView = () => {
-  const cl = useClientes();
+  const pv = useClientes();
 
   const Paginador = () => {
-    if (cl.totalPaginas <= 1) return null;
-    const paginas = [];
-    for (let i = 1; i <= cl.totalPaginas; i++) {
-      paginas.push(
-        <button
-          key={i}
-          onClick={() => cl.setPagina(i)}
-          className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${
-            cl.paginaAjustada === i
-              ? "bg-amber-700 text-white shadow-md"
-              : "bg-white text-stone-600 hover:bg-amber-50 border border-stone-200"
-          }`}
-        >
-          {i}
-        </button>
-      );
-    }
-
+    if (pv.totalPaginas <= 1) return null;
     return (
-      <div className="flex items-center justify-center gap-2 pt-6">
+      <div className="flex items-center gap-1.5">
         <button
-          onClick={() => cl.setPagina((p) => Math.max(1, p - 1))}
-          disabled={cl.paginaAjustada === 1}
-          className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          onClick={() => pv.setPagina((p) => Math.max(1, p - 1))}
+          disabled={pv.paginaAjustada === 1}
+          className="w-7 h-7 rounded-md bg-white border border-[#EDE8E1] flex items-center justify-center text-[#7A6E65] hover:bg-[#F7F5F2] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3.5 h-3.5" />
         </button>
-        {paginas}
+
+        {Array.from({ length: pv.totalPaginas }, (_, i) => i + 1).map((n) => (
+          <button
+            key={n}
+            onClick={() => pv.setPagina(n)}
+            className={`w-7 h-7 rounded-md text-[11.5px] font-bold transition-all ${
+              pv.paginaAjustada === n
+                ? "bg-[#C17B2A] text-white border border-[#C17B2A]"
+                : "bg-white text-[#5A4A3C] border border-[#EDE8E1] hover:bg-[#F7F5F2]"
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+
         <button
-          onClick={() => cl.setPagina((p) => Math.min(cl.totalPaginas, p + 1))}
-          disabled={cl.paginaAjustada === cl.totalPaginas}
-          className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          onClick={() => pv.setPagina((p) => Math.min(pv.totalPaginas, p + 1))}
+          disabled={pv.paginaAjustada === pv.totalPaginas}
+          className="w-7 h-7 rounded-md bg-white border border-[#EDE8E1] flex items-center justify-center text-[#7A6E65] hover:bg-[#F7F5F2] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3.5 h-3.5" />
         </button>
-        <span className="text-xs text-stone-400 ml-2">
-          {cl.clientesFiltrados?.length ?? 0} cliente{(cl.clientesFiltrados?.length ?? 0) !== 1 ? "s" : ""}
-        </span>
       </div>
     );
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 pb-12">
-        {/* Banner */}
-        <div className="relative bg-gradient-to-br from-amber-900 via-amber-800 to-amber-700 rounded-3xl p-6 sm:p-8 text-white overflow-hidden shadow-xl shadow-amber-900/20">
-          <div className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: `radial-gradient(circle at 20% 40%, rgba(255,255,255,0.3) 2px, transparent 2px),
-                                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 1.5px, transparent 1.5px),
-                                radial-gradient(circle at 60% 70%, rgba(255,255,255,0.3) 2px, transparent 2px),
-                                radial-gradient(circle at 30% 80%, rgba(255,255,255,0.2) 1px, transparent 1px)`,
-              backgroundSize: "80px 80px, 120px 120px, 100px 100px, 90px 90px"
-            }}
-          />
-          <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Coffee className="w-7 h-7 text-amber-200" />
-                <h1 className="text-2xl font-extrabold tracking-tight">Directorio de Clientes</h1>
-              </div>
-              <p className="text-amber-100/80 text-sm max-w-lg">
-                Administra los compradores de café y cacao, tanto minoristas como corporativos.
-              </p>
-            </div>
-            <button
-              onClick={cl.abrirModalCrear}
-              className="self-start sm:self-auto inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold text-sm px-5 py-3 rounded-2xl transition-all border border-white/30 shadow-lg"
+      <div className="space-y-5 pb-12">
+
+        {/* ── Page header ── */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-[20px] font-black text-[#1C0F05] tracking-tight leading-tight">
+              Directorio de Clientes
+            </h1>
+            <p className="text-[12.5px] text-[#8B7D72] mt-1">
+              Administra los clientes y empresas con las que mantienes relación comercial.
+            </p>
+          </div>
+          <button
+            onClick={pv.abrirModalCrear}
+            className="inline-flex items-center gap-2 bg-[#C17B2A] hover:bg-[#A86522] text-white text-[12.5px] font-semibold px-4 py-2.5 rounded-lg transition-colors shadow-sm shadow-[#C17B2A]/20"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Nuevo cliente
+          </button>
+        </div>
+
+        {/* ── KPIs ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            {
+              icon: <Users className="w-5 h-5 text-[#C17B2A]" />,
+              iconBg: "bg-[#FDF3E7]",
+              value: pv.totalClientes,
+              label: "Total registrados",
+            },
+            {
+              icon: <UserCheck className="w-5 h-5 text-[#0D7A3E]" />,
+              iconBg: "bg-[#EDFBF3]",
+              value: pv.clientesActivos,
+              label: "Clientes activos",
+            },
+            {
+              icon: <Phone className="w-5 h-5 text-[#1A5FA0]" />,
+              iconBg: "bg-[#E6F1FB]",
+              value: pv.clientesConTelefono,
+              label: "Con teléfono registrado",
+            },
+          ].map((kpi) => (
+            <div
+              key={kpi.label}
+              className="bg-white rounded-xl border border-[#EDE8E1] p-4 flex items-center gap-3.5"
             >
-              <Plus className="w-4 h-4" /> Nuevo Cliente
-            </button>
-          </div>
+              <div className={`w-10 h-10 rounded-lg ${kpi.iconBg} flex items-center justify-center shrink-0`}>
+                {kpi.icon}
+              </div>
+              <div>
+                <p className="text-[22px] font-black text-[#1C0F05] leading-none">{kpi.value}</p>
+                <p className="text-[11px] text-[#9A8E82] mt-1 font-medium">{kpi.label}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-3xl border border-stone-200 p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
-              <Users className="w-7 h-7 text-amber-700" />
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold text-stone-900 leading-none">{cl.totalClientes}</p>
-              <p className="text-xs text-stone-400 mt-1 font-medium">Total registrados</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-3xl border border-stone-200 p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
-              <UserCheck className="w-7 h-7 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold text-stone-900 leading-none">{cl.clientesActivos}</p>
-              <p className="text-xs text-stone-400 mt-1 font-medium">Clientes activos</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-3xl border border-stone-200 p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
-              <Phone className="w-7 h-7 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold text-stone-900 leading-none">{cl.clientesConTelefono}</p>
-              <p className="text-xs text-stone-400 mt-1 font-medium">Con teléfono registrado</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Filtros */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
-          <div className="flex-1 flex items-center bg-white border border-stone-200 rounded-2xl p-1 gap-2 w-full shadow-sm focus-within:border-amber-700 focus-within:ring-2 focus-within:ring-amber-700/15 transition-all">
-            <div className="flex-1 flex items-center px-3 py-2">
-              <Search className="w-4 h-4 text-stone-300 shrink-0 mr-2" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre o correo..."
-                value={cl.busqueda}
-                onChange={(e) => cl.setBusqueda(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-stone-700 placeholder:text-stone-300 outline-none w-full"
-              />
-              {cl.busqueda && (
-                <button onClick={() => cl.setBusqueda("")} className="text-stone-300 hover:text-stone-500 transition-colors ml-2">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+        {/* ── Filtros ── */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex-1 flex items-center gap-2 bg-white border border-[#EDE8E1] rounded-lg px-3 py-2 focus-within:border-[#C17B2A] focus-within:ring-2 focus-within:ring-[#C17B2A]/15 transition-all w-full">
+            <Search className="w-3.5 h-3.5 text-[#B5A99E] shrink-0" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, documento o contacto..."
+              value={pv.busqueda}
+              onChange={(e) => pv.setBusqueda(e.target.value)}
+              className="flex-1 bg-transparent text-[12.5px] text-[#1C0F05] placeholder:text-[#C0B4AA] outline-none"
+            />
+            {pv.busqueda && (
+              <button onClick={() => pv.setBusqueda("")} className="text-[#B5A99E] hover:text-[#5A4A3C] transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <div className="flex bg-stone-100 rounded-xl p-1 gap-1 shrink-0">
+          <div className="flex bg-[#EDE8E1] rounded-lg p-1 gap-1 shrink-0">
             {(["activos", "inactivos"] as const).map((tab) => (
               <button
                 key={tab}
-                onClick={() => cl.setFiltroEstado(tab)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  cl.filtroEstado === tab ? "bg-white text-stone-800 shadow-sm" : "text-stone-400 hover:text-stone-600"
+                onClick={() => pv.setFiltroEstado(tab)}
+                className={`px-4 py-1.5 rounded-md text-[11.5px] font-semibold transition-all ${
+                  pv.filtroEstado === tab
+                    ? "bg-white text-[#1C0F05] shadow-sm"
+                    : "text-[#8B7D72] hover:text-[#4A3728]"
                 }`}
               >
                 {tab === "activos" ? "Activos" : "Inactivos"}
@@ -166,343 +163,386 @@ export const ClientesView = () => {
           </div>
         </div>
 
-        {/* Tabla */}
-        <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-stone-100 bg-stone-50/70">
-                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-stone-400">Cliente</th>
-                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-stone-400">Documento</th>
-                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-stone-400">Contacto</th>
-                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-stone-400">Dirección</th>
-                <th className="px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-stone-400">Estado</th>
-                <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-stone-400">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-50">
-              {cl.cargando ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td className="px-5 py-4"><div className="h-4 bg-stone-100 rounded w-3/4" /></td>
-                    <td className="px-5 py-4"><div className="h-4 bg-stone-100 rounded w-20" /></td>
-                    <td className="px-5 py-4"><div className="h-4 bg-stone-100 rounded w-28" /></td>
-                    <td className="px-5 py-4"><div className="h-4 bg-stone-100 rounded w-24" /></td>
-                    <td className="px-5 py-4"><div className="h-6 bg-stone-100 rounded-full w-16 mx-auto" /></td>
-                    <td className="px-5 py-4"><div className="h-8 bg-stone-100 rounded w-16 ml-auto" /></td>
-                  </tr>
-                ))
-              ) : cl.clientesPaginados.length === 0 ? (
+        {/* ── Tabla (CON SCROLL INTERNO) ── */}
+        <div className="bg-white rounded-xl border border-[#EDE8E1] shadow-sm flex flex-col overflow-hidden">
+          
+          <div className="overflow-auto max-h-[300px]">
+            <table className="w-full text-[12.5px] text-left relative">
+              <thead className="sticky top-0 z-10 shadow-[0_1px_0_#EDE8E1]">
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-stone-400">
-                    {cl.busqueda ? "Sin resultados para esta búsqueda." : `No hay clientes ${cl.filtroEstado}.`}
-                  </td>
+                  <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-[0.8px] text-[#A8978B] bg-[#FDFAF7]">Cliente</th>
+                  <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-[0.8px] text-[#A8978B] bg-[#FDFAF7]">Documento</th>
+                  <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-[0.8px] text-[#A8978B] bg-[#FDFAF7]">Contacto / Ubicación</th>
+                  <th className="px-5 py-3 text-center font-bold text-[10px] uppercase tracking-[0.8px] text-[#A8978B] bg-[#FDFAF7]">Estado</th>
+                  <th className="px-5 py-3 text-right font-bold text-[10px] uppercase tracking-[0.8px] text-[#A8978B] bg-[#FDFAF7]">Acciones</th>
                 </tr>
-              ) : (
-                cl.clientesPaginados.map((cliente) => (
-                  <tr key={cliente.id} className="group hover:bg-amber-50/40 transition-colors">
-                    <td className="px-5 py-3.5">
-                      <p className="font-semibold text-stone-800">{cliente.nombre_completo || cliente.nombre}</p>
-                      {cliente.apellido && <p className="text-[11px] text-stone-400">{cliente.apellido}</p>}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      {cliente.tipo_documento && cliente.numero_documento ? (
-                        <div className="flex items-center gap-1.5">
-                          <CreditCard className="w-3.5 h-3.5 text-stone-400" />
-                          <span className="text-xs font-mono text-stone-700">{cliente.tipo_documento}: {cliente.numero_documento}</span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-stone-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-xs text-stone-600">
-                          <Mail className="w-3.5 h-3.5 text-stone-400" />
-                          {cliente.email || "—"}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-stone-600">
-                          <Phone className="w-3.5 h-3.5 text-stone-400" />
-                          {cliente.telefono || "—"}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1.5 text-xs text-stone-600">
-                        <MapPin className="w-3.5 h-3.5 text-stone-400" />
-                        {cliente.direccion || "—"}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-center">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                          cliente.estado
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-red-50 text-red-700 border border-red-200"
-                        }`}
-                      >
-                        {cliente.estado ? "Activo" : "Inactivo"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {cliente.estado ? (
-                          <>
-                            <button
-                              onClick={() => cl.abrirModalEditar(cliente)}
-                              className="p-2 rounded-lg text-stone-400 hover:text-amber-700 hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-all"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => cl.handleDesactivar(cliente.id, cliente.nombre)}
-                              className="p-2 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() => cl.handleReactivar(cliente.id, cliente.nombre)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
-                          >
-                            <RefreshCw className="w-3 h-3" /> Reactivar
-                          </button>
-                        )}
-                      </div>
+              </thead>
+              
+              <tbody className="divide-y divide-[#F5F0EB]">
+                {pv.cargando ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="px-5 py-3.5">
+                        <div className="h-3.5 bg-[#F0EBE4] rounded w-3/4 mb-1.5" />
+                        <div className="h-3 bg-[#F0EBE4] rounded w-1/2" />
+                      </td>
+                      <td className="px-5 py-3.5"><div className="h-4 bg-[#F0EBE4] rounded w-20" /></td>
+                      <td className="px-5 py-3.5">
+                        <div className="h-3 bg-[#F0EBE4] rounded w-28 mb-1.5" />
+                        <div className="h-3 bg-[#F0EBE4] rounded w-20" />
+                      </td>
+                      <td className="px-5 py-3.5"><div className="h-5 bg-[#F0EBE4] rounded-full w-14 mx-auto" /></td>
+                      <td className="px-5 py-3.5"><div className="h-7 bg-[#F0EBE4] rounded w-14 ml-auto" /></td>
+                    </tr>
+                  ))
+                ) : pv.clientesPaginados.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-12 text-center text-[#9A8E82] text-sm">
+                      {pv.busqueda
+                        ? `Sin resultados para "${pv.busqueda}".`
+                        : `No hay clientes ${pv.filtroEstado}.`}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          <div className="px-5 py-3 border-t border-stone-100 bg-stone-50/30 flex justify-end">
+                ) : (
+                  pv.clientesPaginados.map((cliente) => (
+                    <tr key={cliente.id} className="group hover:bg-[#FDFAF7] transition-colors">
+                      <td className="px-5 py-3">
+                        <p className="font-semibold text-[#1C0F05]">
+                          {cliente.nombre} {cliente.apellido || ""}
+                        </p>
+                        {cliente.email && (
+                          <div className="flex items-center gap-1 mt-0.5 text-[#9A8E82]">
+                            <Mail className="w-3 h-3" />
+                            <span className="text-[11px]">{cliente.email}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        {cliente.tipo_documento && cliente.numero_documento ? (
+                          <div className="flex items-center gap-1.5">
+                            <CreditCard className="w-3.5 h-3.5 text-[#B5A99E]" />
+                            <span className="text-[11.5px] font-mono text-[#5A4A3C] font-medium">{cliente.tipo_documento}: {cliente.numero_documento}</span>
+                          </div>
+                        ) : (
+                          <span className="text-[11.5px] text-[#C0B4AA]">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-[11.5px] text-[#5A4A3C]">
+                            <Phone className="w-3.5 h-3.5 text-[#B5A99E]" />
+                            {cliente.telefono || "—"}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11.5px] text-[#5A4A3C]">
+                            <MapPin className="w-3.5 h-3.5 text-[#B5A99E]" />
+                            <span className="truncate max-w-[150px]">
+                              {cliente.departamento ? `${cliente.distrito || ''}, ${cliente.departamento}` : "—"}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-bold ${
+                            cliente.estado
+                              ? "bg-[#EDFBF3] text-[#0D6E3F] border border-[#9FE1CB]"
+                              : "bg-[#FCEBEB] text-[#8B2020] border border-[#F7C1C1]"
+                          }`}
+                        >
+                          {cliente.estado ? "Activo" : "Inactivo"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center justify-end gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                          {cliente.estado ? (
+                            <>
+                              <button
+                                onClick={() => pv.abrirModalEditar(cliente)}
+                                className="w-7 h-7 rounded-md flex items-center justify-center text-[#9A8E82] border border-transparent hover:text-[#1C0F05] hover:bg-[#F7F5F2] hover:border-[#EDE8E1] transition-all"
+                                title="Editar"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => pv.handleDesactivar(cliente.id, cliente.nombre)}
+                                className="w-7 h-7 rounded-md flex items-center justify-center text-[#9A8E82] border border-transparent hover:text-red-600 hover:bg-[#FCEBEB] hover:border-[#F7C1C1] transition-all"
+                                title="Suspender cliente"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => pv.handleReactivar(cliente.id)}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-[#8B5A1A] bg-[#FDF3E7] border border-[#F0D9B5] rounded-lg hover:bg-[#F5E4C6] transition-colors"
+                            >
+                              <RefreshCw className="w-3 h-3" /> Reactivar
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer de tabla (Paginador) */}
+          <div className="px-5 py-2.5 bg-[#FDFAF7] border-t border-[#EDE8E1] flex items-center justify-between shrink-0">
+            <span className="text-[11px] text-[#9A8E82]">
+              {pv.clientesFiltrados?.length ?? 0} cliente
+              {(pv.clientesFiltrados?.length ?? 0) !== 1 ? "s" : ""}
+            </span>
             <Paginador />
           </div>
         </div>
+      </div>
 
-        {/* Modal */}
-        {cl.isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-            <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={cl.cerrarModal} />
-            <div className="relative bg-white w-full max-w-2xl mx-0 sm:mx-4 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh] border border-stone-200/60">
-              <div className="sm:hidden w-10 h-1 bg-stone-200 rounded-full mx-auto mt-3 mb-1 shrink-0" />
 
-              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-stone-100">
-                <div>
-                  <h2 className="text-lg font-extrabold text-stone-900">
-                    {cl.clienteAEditar ? "Editar cliente" : "Nuevo cliente"}
-                  </h2>
-                  <p className="text-xs text-stone-400 mt-0.5">
-                    {cl.clienteAEditar
-                      ? "Actualiza los datos del cliente."
-                      : "Registra un nuevo comprador de café o cacao."}
-                  </p>
-                </div>
-                <button onClick={cl.cerrarModal} className="w-8 h-8 rounded-xl flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
+      {/* ════════════════════════════════════════════════════════════════════
+          MODAL
+      ════════════════════════════════════════════════════════════════════ */}
+      {pv.isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-[#1C0F05]/55 backdrop-blur-sm"
+            onClick={pv.cerrarModal}
+          />
+
+          <div className="relative bg-white w-full max-w-[600px] mx-0 sm:mx-4 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[88vh] border border-[#EDE8E1]">
+            <div className="sm:hidden w-9 h-1 bg-[#DDD5CB] rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+            <div className="shrink-0 flex items-start justify-between px-5 py-4 border-b border-[#F0EBE4]">
+              <div>
+                <h2 className="text-[15px] font-black text-[#1C0F05]">
+                  {pv.clienteAEditar ? "Editar cliente" : "Nuevo cliente"}
+                </h2>
+                <p className="text-[11px] text-[#9A8E82] mt-0.5">
+                  {pv.clienteAEditar
+                    ? "Actualiza los datos comerciales del cliente."
+                    : "Registra un nuevo cliente para transacciones."}
+                </p>
               </div>
+              <button
+                onClick={pv.cerrarModal}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A6E65] hover:text-[#1C0F05] hover:bg-[#F7F5F2] transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
-              <form id="clienteForm" onSubmit={cl.handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-                {/* Identificación */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <CreditCard className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Identificación</h3>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label>Tipo Doc.</Label>
-                      <select
-                        value={cl.formData.tipo_documento}
-                        onChange={(e) => cl.handleChange("tipo_documento", e.target.value)}
-                        className={inputClass + " cursor-pointer"}
-                      >
-                        <option value="">—</option>
-                        <option value="DNI">DNI</option>
-                        <option value="RUC">RUC</option>
-                        <option value="CE">C.E.</option>
-                        <option value="Pasaporte">Pasaporte</option>
-                      </select>
-                    </div>
-                    <div>
-                      <Label>Número</Label>
-                      <input
-                        type="text"
-                        value={cl.formData.numero_documento}
-                        onChange={cl.handleNumeroDocumentoChange}
-                        placeholder="Ingrese número"
-                        className={`${inputClass} ${cl.errores.numero_documento ? errorInputClass : ""}`}
-                      />
-                      {cl.errores.numero_documento && (
-                        <p className="text-red-500 text-[11px] mt-1 font-medium">{cl.errores.numero_documento}</p>
-                      )}
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        type="button"
-                        onClick={cl.consultarDocumento}
-                        disabled={cl.consultandoDoc}
-                        className="w-full py-2.5 px-4 bg-amber-100 text-amber-800 rounded-xl text-xs font-bold hover:bg-amber-200 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
-                      >
-                        {cl.consultandoDoc ? (
-                          <span className="w-4 h-4 border-2 border-amber-300 border-t-amber-700 rounded-full animate-spin" />
-                        ) : (
-                          <FileSearch className="w-4 h-4" />
-                        )}
-                        {cl.consultandoDoc ? "Consultando..." : "Consultar"}
-                      </button>
-                    </div>
-                  </div>
-                </section>
-
-                {/* Datos personales */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Users className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Nombre</h3>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label req>Nombre / Razón Social</Label>
-                      <input
-                        type="text"
-                        value={cl.formData.nombre}
-                        onChange={(e) => cl.handleChange("nombre", e.target.value)}
-                        className={`${inputClass} ${cl.errores.nombre ? errorInputClass : ""}`}
-                      />
-                      {cl.errores.nombre && (
-                        <p className="text-red-500 text-[11px] mt-1 font-medium">{cl.errores.nombre}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label>Apellidos</Label>
-                      <input
-                        type="text"
-                        value={cl.formData.apellido}
-                        onChange={(e) => cl.handleChange("apellido", e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                  </div>
-                </section>
-
-                {/* Contacto */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Mail className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Contacto</h3>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Correo electrónico</Label>
-                      <input
-                        type="email"
-                        value={cl.formData.email}
-                        onChange={(e) => cl.handleChange("email", e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <Label hint="9 dígitos, empieza con 9">Teléfono celular</Label>
-                      <input
-                        type="tel"
-                        value={cl.formData.telefono}
-                        onChange={cl.handleTelefonoChange}
-                        placeholder="987654321"
-                        className={`${inputClass} ${cl.errores.telefono ? errorInputClass : ""}`}
-                      />
-                      {cl.errores.telefono && (
-                        <p className="text-red-500 text-[11px] mt-1 font-medium">{cl.errores.telefono}</p>
-                      )}
-                    </div>
-                  </div>
-                </section>
-
-                {/* Dirección */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <MapPin className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Dirección</h3>
+            <form
+              id="clienteForm"
+              onSubmit={pv.handleSubmit}
+              className="flex-1 overflow-y-auto px-5 py-5 space-y-6"
+            >
+              {/* Sección: Identificación */}
+              <section>
+                <div className="flex items-center gap-2 mb-3.5 pb-2.5 border-b border-[#F0EBE4]">
+                  <CreditCard className="w-3.5 h-3.5 text-[#C17B2A]" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[1px] text-[#9A8E82]">
+                    Identificación
+                  </h3>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <FieldLabel>Tipo Doc.</FieldLabel>
+                    <select
+                      value={pv.formData.tipo_documento}
+                      onChange={(e) => pv.handleChange("tipo_documento", e.target.value)}
+                      className={`${inputBase} cursor-pointer`}
+                    >
+                      <option value="">—</option>
+                      <option value="DNI">DNI</option>
+                      <option value="RUC">RUC</option>
+                      <option value="CE">C.E.</option>
+                      <option value="Pasaporte">Pasaporte</option>
+                    </select>
                   </div>
                   <div>
-                    <Label>Dirección fiscal / envío</Label>
+                    <FieldLabel hint="Buscar Reniec/Sunat">Número</FieldLabel>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={pv.formData.numero_documento}
+                        onChange={pv.handleNumeroDocumentoChange}
+                        placeholder="Ingrese número"
+                        className={`${inputBase} ${pv.errores.numero_documento ? inputError : ""}`}
+                      />
+                      {(pv.formData.tipo_documento === "DNI" || pv.formData.tipo_documento === "RUC") && (
+                        <button
+                          type="button"
+                          onClick={pv.buscarDocumento}
+                          disabled={pv.consultandoDoc || !pv.formData.numero_documento}
+                          className="shrink-0 w-10 h-[38px] bg-[#F7F5F2] border border-[#DDD5CB] text-[#C17B2A] rounded-lg flex items-center justify-center hover:bg-[#EDE8E1] hover:text-[#A86522] transition-colors disabled:opacity-50"
+                          title="Consultar Documento"
+                        >
+                          {pv.consultandoDoc ? (
+                             <span className="w-4 h-4 border-2 border-[#C17B2A]/30 border-t-[#C17B2A] rounded-full animate-spin" />
+                          ) : (
+                             <SearchCode className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    {pv.errores.numero_documento && (
+                      <p className="text-red-500 text-[10.5px] mt-1 font-medium">{pv.errores.numero_documento}</p>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* Sección: Datos Personales/Empresa */}
+              <section>
+                <div className="flex items-center gap-2 mb-3.5 pb-2.5 border-b border-[#F0EBE4]">
+                  <User className="w-3.5 h-3.5 text-[#C17B2A]" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[1px] text-[#9A8E82]">
+                    Datos Principales
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className={pv.formData.tipo_documento === "RUC" ? "sm:col-span-2" : ""}>
+                    <FieldLabel required>
+                      {pv.formData.tipo_documento === "RUC" ? "Razón Social" : "Nombres"}
+                    </FieldLabel>
                     <input
                       type="text"
-                      value={cl.formData.direccion}
-                      onChange={(e) => cl.handleChange("direccion", e.target.value)}
-                      className={inputClass}
+                      value={pv.formData.nombre}
+                      onChange={(e) => pv.handleChange("nombre", e.target.value)}
+                      className={`${inputBase} ${pv.errores.nombre ? inputError : ""}`}
+                    />
+                    {pv.errores.nombre && (
+                      <p className="text-red-500 text-[10.5px] mt-1 font-medium">{pv.errores.nombre}</p>
+                    )}
+                  </div>
+                  {pv.formData.tipo_documento !== "RUC" && (
+                    <div>
+                      <FieldLabel>Apellidos</FieldLabel>
+                      <input
+                        type="text"
+                        value={pv.formData.apellido}
+                        onChange={(e) => pv.handleChange("apellido", e.target.value)}
+                        className={`${inputBase} ${pv.errores.apellido ? inputError : ""}`}
+                      />
+                      {pv.errores.apellido && (
+                        <p className="text-red-500 text-[10.5px] mt-1 font-medium">{pv.errores.apellido}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <FieldLabel>Correo Electrónico</FieldLabel>
+                    <input
+                      type="email"
+                      value={pv.formData.email}
+                      onChange={(e) => pv.handleChange("email", e.target.value)}
+                      placeholder="ejemplo@correo.com"
+                      className={`${inputBase} ${pv.errores.email ? inputError : ""}`}
+                    />
+                    {pv.errores.email && (
+                      <p className="text-red-500 text-[10.5px] mt-1 font-medium">{pv.errores.email}</p>
+                    )}
+                  </div>
+                  <div>
+                    <FieldLabel hint="Opcional">Teléfono</FieldLabel>
+                    <input
+                      type="tel"
+                      value={pv.formData.telefono}
+                      onChange={pv.handleTelefonoChange}
+                      placeholder="987654321"
+                      className={`${inputBase} ${pv.errores.telefono ? inputError : ""}`}
+                    />
+                    {pv.errores.telefono && (
+                      <p className="text-red-500 text-[10.5px] mt-1 font-medium">{pv.errores.telefono}</p>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              {/* Sección: Ubicación */}
+              <section>
+                <div className="flex items-center gap-2 mb-3.5 pb-2.5 border-b border-[#F0EBE4]">
+                  <MapPin className="w-3.5 h-3.5 text-[#C17B2A]" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[1px] text-[#9A8E82]">
+                    Ubicación y Dirección
+                  </h3>
+                </div>
+                <div className="mb-4">
+                  <FieldLabel>Dirección Física</FieldLabel>
+                  <input
+                    type="text"
+                    value={pv.formData.direccion}
+                    onChange={(e) => pv.handleChange("direccion", e.target.value)}
+                    className={`${inputBase} ${pv.errores.direccion ? inputError : ""}`}
+                  />
+                  {pv.errores.direccion && (
+                      <p className="text-red-500 text-[10.5px] mt-1 font-medium">{pv.errores.direccion}</p>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <FieldLabel>Departamento</FieldLabel>
+                    <input
+                      type="text"
+                      value={pv.formData.departamento}
+                      onChange={(e) => pv.handleChange("departamento", e.target.value)}
+                      className={inputBase}
                     />
                   </div>
-                </section>
-
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <MapPin className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Ubigeo</h3>
+                  <div>
+                    <FieldLabel>Provincia</FieldLabel>
+                    <input
+                      type="text"
+                      value={pv.formData.provincia}
+                      onChange={(e) => pv.handleChange("provincia", e.target.value)}
+                      className={inputBase}
+                    />
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <Label>Distrito</Label>
-                      <input
-                        type="text"
-                        value={cl.formData.distrito}
-                        onChange={(e) => cl.handleChange("distrito", e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <Label>Provincia</Label>
-                      <input
-                        type="text"
-                        value={cl.formData.provincia}
-                        onChange={(e) => cl.handleChange("provincia", e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div>
-                      <Label>Departamento</Label>
-                      <input
-                        type="text"
-                        value={cl.formData.departamento}
-                        onChange={(e) => cl.handleChange("departamento", e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
+                  <div>
+                    <FieldLabel>Distrito</FieldLabel>
+                    <input
+                      type="text"
+                      value={pv.formData.distrito}
+                      onChange={(e) => pv.handleChange("distrito", e.target.value)}
+                      className={inputBase}
+                    />
                   </div>
-                </section>
-              </form>
+                </div>
+              </section>
+            </form>
 
-              <div className="shrink-0 flex items-center gap-3 px-6 py-4 border-t border-stone-100 bg-white rounded-b-3xl">
-                <button
-                  type="button"
-                  onClick={cl.cerrarModal}
-                  className="flex-1 py-3 rounded-2xl text-sm font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  form="clienteForm"
-                  type="submit"
-                  disabled={cl.guardando}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold text-white bg-amber-700 hover:bg-amber-800 disabled:opacity-60 active:scale-[0.98] transition-all shadow-md shadow-amber-800/20"
-                >
-                  {cl.guardando ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando…
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      {cl.clienteAEditar ? "Actualizar cliente" : "Registrar cliente"}
-                    </>
-                  )}
-                </button>
-              </div>
+            <div className="shrink-0 flex items-center gap-2.5 px-5 py-4 border-t border-[#F0EBE4] bg-white rounded-b-2xl">
+              <button
+                type="button"
+                onClick={pv.cerrarModal}
+                className="flex-1 py-2.5 rounded-lg text-[12.5px] font-semibold text-[#5A4A3C] bg-[#F7F5F2] border border-[#EDE8E1] hover:bg-[#EDE8E1] transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                form="clienteForm"
+                type="submit"
+                disabled={pv.guardando}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12.5px] font-semibold text-white bg-[#C17B2A] hover:bg-[#A86522] disabled:opacity-60 active:scale-[0.98] transition-all shadow-sm shadow-[#C17B2A]/25"
+              >
+                {pv.guardando ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Guardando…
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    {pv.clienteAEditar ? "Actualizar cliente" : "Registrar cliente"}
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

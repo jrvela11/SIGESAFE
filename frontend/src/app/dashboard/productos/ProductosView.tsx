@@ -1,40 +1,41 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState } from "react";
 import { DashboardLayout } from "../dashboard/DashboardLayout";
 import { useProductos } from "./useProductos";
 import {
   Plus, Edit, Trash2, Search, X, Save, Package, AlertTriangle,
-  CheckCircle, RefreshCw, Tag, DollarSign, Image as ImageIcon,
-  ShoppingCart, LayoutGrid, List, TrendingUp, Filter,
-  ChevronLeft, ChevronRight, Coffee
+  CheckCircle, RefreshCw, Tag, DollarSign, ShoppingCart, 
+  LayoutGrid, List, TrendingUp, Filter, ChevronLeft, ChevronRight, Coffee
 } from "lucide-react";
-import api from "../../../lib/api";
 
-const BASE = api.defaults.baseURL?.replace("/api", "") ?? "";
 const sol = (n: number) =>
   new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(n);
 
-// ─── Componentes atómicos ──────────────────────────────────────────────────
-const Label: React.FC<{ children: React.ReactNode; req?: boolean; hint?: string }> = ({ children, req, hint }) => (
+// ─── Sub-componentes de UI ──────────────────────────────────────────────────
+const FieldLabel: React.FC<{ children: React.ReactNode; required?: boolean; hint?: string }> = ({ children, required, hint }) => (
   <div className="flex items-center justify-between mb-1.5">
-    <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-      {children}{req && <span className="text-amber-600 ml-0.5">*</span>}
-    </p>
-    {hint && <span className="text-[10px] text-stone-400">{hint}</span>}
+    <span className="text-[10px] font-bold text-[#7A6E65] uppercase tracking-[0.8px]">
+      {children}
+      {required && <span className="text-[#C17B2A] ml-0.5">*</span>}
+    </span>
+    {hint && <span className="text-[10px] text-[#B5A99E]">{hint}</span>}
   </div>
 );
 
-const inputClass =
-  "w-full px-3.5 py-2.5 rounded-xl border border-stone-200 bg-white text-sm text-stone-800 " +
-  "outline-none transition focus:border-amber-700 focus:ring-2 focus:ring-amber-700/15 " +
-  "placeholder:text-stone-300";
+const inputBase =
+  "w-full px-3 py-2.5 rounded-lg border border-[#DDD5CB] bg-[#FDFAF7] text-[12.5px] " +
+  "text-[#2C1A0E] outline-none transition focus:border-[#C17B2A] focus:ring-2 " +
+  "focus:ring-[#C17B2A]/15 placeholder:text-[#C0B4AA]";
 
-// ─── Tarjeta de producto (vista cuadrícula) ────────────────────────────────
+const inputError = "border-red-300 focus:border-red-500 focus:ring-red-500/15";
+
+// ─── Tarjeta de producto (Grid) ─────────────────────────────────────────────
 const ProductCard: React.FC<{
   prod: ReturnType<typeof useProductos>["productos"][0];
+  catNombre: string;
   onEdit: () => void;
   onDelete: () => void;
   onReactivar: () => void;
-}> = ({ prod, onEdit, onDelete, onReactivar }) => {
+}> = ({ prod, catNombre, onEdit, onDelete, onReactivar }) => {
   const critico = prod.stock_actual <= prod.stock_minimo;
   const margen =
     prod.precio_compra > 0
@@ -43,42 +44,39 @@ const ProductCard: React.FC<{
 
   return (
     <div
-      className={`group bg-white rounded-3xl border flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-        critico ? "border-red-200 hover:border-red-300" : "border-stone-200 hover:border-amber-200"
+      className={`group bg-white rounded-2xl border flex flex-col transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
+        critico ? "border-red-200 hover:border-red-300" : "border-[#EDE8E1] hover:border-[#C17B2A]"
       } ${!prod.estado ? "opacity-60" : ""} overflow-hidden`}
     >
-      {/* Imagen */}
-      <div className="relative aspect-[4/3] rounded-t-3xl overflow-hidden bg-stone-100 shrink-0">
+      <div className="relative aspect-[4/3] rounded-t-2xl overflow-hidden bg-[#F7F5F2] shrink-0">
         {prod.imagen_url ? (
-          <img src={BASE + prod.imagen_url} alt={prod.nombre} className="w-full h-full object-cover" />
+          <img src={`/storage/${prod.imagen_url}`} alt={prod.nombre} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-stone-50">
-            <Coffee className="w-8 h-8 text-stone-300" />
-            <span className="text-[10px] text-stone-300 font-medium">Sin imagen</span>
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[#FDFAF7]">
+            <Coffee className="w-8 h-8 text-[#C0B4AA]" />
+            <span className="text-[10px] text-[#C0B4AA] font-medium">Sin imagen</span>
           </div>
         )}
-        {/* Badge de categoría */}
         <div className="absolute top-3 left-3">
-          <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-amber-900/80 text-amber-100 backdrop-blur-sm">
+          <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-[#1C0F05]/80 text-[#F5ECD7] backdrop-blur-sm shadow-sm">
             <Tag className="w-2.5 h-2.5" />
-            {prod.categoria_nombre}
+            {catNombre}
           </span>
         </div>
-        {/* Stock */}
         <div className="absolute top-3 right-3">
-          <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm ${
-            critico ? "bg-red-500 text-white" : "bg-white/90 text-emerald-700 border border-emerald-200 backdrop-blur-sm"
+          <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-sm ${
+            critico ? "bg-red-500 text-white" : "bg-white/90 text-[#0D7A3E] border border-[#9FE1CB] backdrop-blur-sm"
           }`}>
             {critico && <AlertTriangle className="w-3 h-3" />}
-            {prod.stock_actual} {prod.unidad_medida}
+            {prod.stock_actual} <span className="font-normal opacity-80">{prod.unidad_medida}</span>
           </span>
         </div>
-        {/* Overlay de acciones rápidas */}
+        
         {prod.estado && (
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-end justify-end p-3 opacity-0 group-hover:opacity-100">
+          <div className="absolute inset-0 bg-[#1C0F05]/0 group-hover:bg-[#1C0F05]/10 transition-colors flex items-end justify-end p-3 opacity-0 group-hover:opacity-100">
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              className="p-2 bg-white rounded-full shadow-md text-amber-700 hover:bg-amber-50 transition-all"
+              className="p-2 bg-white rounded-lg shadow-md text-[#C17B2A] hover:bg-[#FDF3E7] transition-all"
             >
               <Edit className="w-4 h-4" />
             </button>
@@ -86,29 +84,28 @@ const ProductCard: React.FC<{
         )}
       </div>
 
-      {/* Contenido */}
       <div className="p-4 flex flex-col flex-1 gap-3">
         <div>
-          <h3 className="font-bold text-stone-800 text-sm leading-snug line-clamp-2">{prod.nombre}</h3>
-          <p className="text-[11px] font-mono text-stone-400 mt-1">SKU: {prod.sku}</p>
+          <h3 className="font-bold text-[#1C0F05] text-[13px] leading-snug line-clamp-2">{prod.nombre}</h3>
+          <p className="text-[10px] font-mono text-[#9A8E82] mt-1">SKU: {prod.sku}</p>
         </div>
 
-        <div className="bg-stone-50 rounded-2xl p-3 space-y-1.5">
+        <div className="bg-[#FDFAF7] rounded-xl p-3 border border-[#F0EBE4] space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-stone-400 flex items-center gap-1">
+            <span className="text-[10px] text-[#9A8E82] flex items-center gap-1">
               <ShoppingCart className="w-3 h-3" /> Costo ref.
             </span>
-            <span className="text-xs font-semibold text-stone-600">{sol(prod.precio_compra)}</span>
+            <span className="text-[11.5px] font-semibold text-[#5A4A3C]">{sol(prod.precio_compra)}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-stone-400">Venta min.</span>
+            <span className="text-[10px] text-[#9A8E82]">Venta min.</span>
             <div className="flex items-center gap-2">
               {margen && (
-                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full">
+                <span className="text-[9px] font-bold text-[#0D7A3E] bg-[#EDFBF3] border border-[#9FE1CB] px-1.5 py-0.5 rounded-md">
                   +{margen}%
                 </span>
               )}
-              <span className="text-xs font-bold text-emerald-700">{sol(prod.precio_minorista)}</span>
+              <span className="text-[13px] font-black text-[#0D7A3E]">{sol(prod.precio_minorista)}</span>
             </div>
           </div>
         </div>
@@ -118,13 +115,13 @@ const ProductCard: React.FC<{
             <>
               <button
                 onClick={onEdit}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-stone-100 hover:bg-amber-50 hover:text-amber-800 text-stone-600 text-xs font-semibold transition-colors border border-transparent hover:border-amber-200"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[#F7F5F2] hover:bg-[#FDF3E7] hover:text-[#C17B2A] text-[#5A4A3C] text-[11.5px] font-bold transition-colors border border-[#EDE8E1] hover:border-[#F0D9B5]"
               >
                 <Edit className="w-3.5 h-3.5" /> Editar
               </button>
               <button
                 onClick={onDelete}
-                className="p-2 rounded-xl bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-400 transition-colors border border-transparent hover:border-red-200"
+                className="p-2 rounded-lg bg-[#F7F5F2] hover:bg-[#FCEBEB] hover:text-red-600 text-[#9A8E82] transition-colors border border-[#EDE8E1] hover:border-[#F7C1C1]"
                 title="Desactivar"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -133,7 +130,7 @@ const ProductCard: React.FC<{
           ) : (
             <button
               onClick={onReactivar}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold border border-amber-200 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-[#FDF3E7] hover:bg-[#F5E4C6] text-[#8B5A1A] text-[11.5px] font-bold border border-[#F0D9B5] transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" /> Publicar de nuevo
             </button>
@@ -144,62 +141,63 @@ const ProductCard: React.FC<{
   );
 };
 
-// ─── Fila de tabla (vista lista) ───────────────────────────────────────────
+// ─── Fila de tabla (List) ───────────────────────────────────────────────────
 const ProductRow: React.FC<{
   prod: ReturnType<typeof useProductos>["productos"][0];
+  catNombre: string;
   onEdit: () => void;
   onDelete: () => void;
   onReactivar: () => void;
-}> = ({ prod, onEdit, onDelete, onReactivar }) => {
+}> = ({ prod, catNombre, onEdit, onDelete, onReactivar }) => {
   const critico = prod.stock_actual <= prod.stock_minimo;
   return (
-    <tr className={`group transition-colors hover:bg-amber-50/40 ${!prod.estado ? "opacity-60" : ""}`}>
-      <td className="px-5 py-3.5">
+    <tr className={`group transition-colors hover:bg-[#FDFAF7] ${!prod.estado ? "opacity-60" : ""}`}>
+      <td className="px-5 py-3">
         <div className="flex items-center gap-3">
           {prod.imagen_url ? (
-            <img src={BASE + prod.imagen_url} alt={prod.nombre}
-              className="w-10 h-10 rounded-xl object-cover border border-stone-200 shrink-0" />
+            <img src={`/storage/${prod.imagen_url}`} alt={prod.nombre}
+              className="w-10 h-10 rounded-lg object-cover border border-[#EDE8E1] shrink-0" />
           ) : (
-            <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center shrink-0">
-              <Coffee className="w-4 h-4 text-stone-300" />
+            <div className="w-10 h-10 rounded-lg bg-[#F7F5F2] flex items-center justify-center shrink-0 border border-[#EDE8E1]">
+              <Coffee className="w-4 h-4 text-[#C0B4AA]" />
             </div>
           )}
           <div>
-            <p className="font-semibold text-stone-800 text-sm leading-tight">{prod.nombre}</p>
-            <p className="text-[11px] font-mono text-stone-400 mt-0.5">
-              {prod.sku} · <span className="text-amber-700">{prod.categoria_nombre}</span>
+            <p className="font-semibold text-[#1C0F05] text-[12.5px] leading-tight">{prod.nombre}</p>
+            <p className="text-[10px] font-mono text-[#9A8E82] mt-0.5">
+              {prod.sku} · <span className="text-[#C17B2A]">{catNombre}</span>
             </p>
           </div>
         </div>
       </td>
-      <td className="px-5 py-3.5">
-        <p className="text-sm font-semibold text-stone-700">{sol(prod.precio_minorista)}</p>
-        <p className="text-[11px] text-stone-400">costo ref. {sol(prod.precio_compra)}</p>
+      <td className="px-5 py-3">
+        <p className="text-[12.5px] font-black text-[#0D7A3E]">{sol(prod.precio_minorista)}</p>
+        <p className="text-[10px] text-[#9A8E82]">costo {sol(prod.precio_compra)}</p>
       </td>
-      <td className="px-5 py-3.5 text-center">
-        <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold ${
-          critico ? "bg-red-100 text-red-700" : "bg-emerald-50 text-emerald-700"
+      <td className="px-5 py-3 text-center">
+        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold ${
+          critico ? "bg-[#FCEBEB] text-[#8B2020] border border-[#F7C1C1]" : "bg-[#EDFBF3] text-[#0D6E3F] border border-[#9FE1CB]"
         }`}>
           {critico && <AlertTriangle className="w-3 h-3" />}
-          {prod.stock_actual} <span className="font-normal opacity-70">{prod.unidad_medida}</span>
+          {prod.stock_actual} <span className="font-medium opacity-80">{prod.unidad_medida}</span>
         </span>
       </td>
-      <td className="px-5 py-3.5 text-right">
-        <div className="flex items-center justify-end gap-1.5">
+      <td className="px-5 py-3">
+        <div className="flex items-center justify-end gap-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
           {prod.estado ? (
             <>
               <button onClick={onEdit}
-                className="p-2 rounded-lg text-stone-400 hover:text-amber-700 hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-all">
+                className="w-7 h-7 rounded-md flex items-center justify-center text-[#9A8E82] border border-transparent hover:text-[#1C0F05] hover:bg-[#F7F5F2] hover:border-[#EDE8E1] transition-all">
                 <Edit className="w-3.5 h-3.5" />
               </button>
               <button onClick={onDelete}
-                className="p-2 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all">
+                className="w-7 h-7 rounded-md flex items-center justify-center text-[#9A8E82] border border-transparent hover:text-red-600 hover:bg-[#FCEBEB] hover:border-[#F7C1C1] transition-all">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </>
           ) : (
             <button onClick={onReactivar}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors">
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-[#8B5A1A] bg-[#FDF3E7] border border-[#F0D9B5] rounded-lg hover:bg-[#F5E4C6] transition-colors">
               <RefreshCw className="w-3 h-3" /> Publicar
             </button>
           )}
@@ -211,499 +209,434 @@ const ProductRow: React.FC<{
 
 // ─── Esqueletos ────────────────────────────────────────────────────────────
 const CardSkeleton = () => (
-  <div className="bg-white rounded-3xl border border-stone-100 overflow-hidden animate-pulse">
-    <div className="aspect-[4/3] bg-stone-100" />
+  <div className="bg-white rounded-2xl border border-[#EDE8E1] overflow-hidden animate-pulse">
+    <div className="aspect-[4/3] bg-[#F7F5F2]" />
     <div className="p-4 space-y-3">
-      <div className="h-4 bg-stone-100 rounded-lg w-3/4" />
-      <div className="h-3 bg-stone-100 rounded w-1/3" />
-      <div className="h-16 bg-stone-50 rounded-2xl" />
-      <div className="h-9 bg-stone-100 rounded-xl" />
+      <div className="h-3.5 bg-[#F0EBE4] rounded w-3/4" />
+      <div className="h-2.5 bg-[#F0EBE4] rounded w-1/3" />
+      <div className="h-14 bg-[#FDFAF7] border border-[#F0EBE4] rounded-xl" />
+      <div className="h-8 bg-[#F0EBE4] rounded-lg" />
     </div>
   </div>
 );
 
 const TableSkeleton = () => (
-  <div className="bg-white rounded-2xl border border-stone-200 p-6 space-y-4 animate-pulse">
-    {Array.from({ length: 5 }).map((_, i) => (
-      <div key={i} className="flex items-center gap-4">
-        <div className="w-10 h-10 bg-stone-100 rounded-xl shrink-0" />
-        <div className="flex-1 space-y-2">
-          <div className="h-3.5 bg-stone-100 rounded w-40" />
-          <div className="h-2.5 bg-stone-100 rounded w-24" />
+  <div className="bg-white rounded-2xl border border-[#EDE8E1] shadow-sm overflow-hidden flex flex-col animate-pulse">
+    <div className="overflow-auto max-h-[300px] p-6 space-y-4">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-[#F7F5F2] rounded-lg shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3.5 bg-[#F0EBE4] rounded w-40" />
+            <div className="h-2.5 bg-[#F0EBE4] rounded w-24" />
+          </div>
+          <div className="h-3.5 bg-[#F0EBE4] rounded w-20" />
+          <div className="h-6 bg-[#F0EBE4] rounded-full w-16" />
         </div>
-        <div className="h-3.5 bg-stone-100 rounded w-20" />
-        <div className="h-7 bg-stone-100 rounded-lg w-16" />
-      </div>
-    ))}
+      ))}
+    </div>
   </div>
 );
 
-// ─── Vista principal con paginación ────────────────────────────────────────
-const POR_PAGINA = 10;
+// ─── Vista principal ───────────────────────────────────────────────────────
 
 export const ProductosView = () => {
   const p = useProductos();
   const [vista, setVista] = useState<"grid" | "list">("grid");
-  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
-  const [pagina, setPagina] = useState(1);
-
-  const filtrados = useMemo(() => {
-    return p.productos.filter((prod) => {
-      const okEstado = p.filtroEstado === "activos" ? prod.estado : !prod.estado;
-      const okCategoria = filtroCategoria === "" || prod.categoria_id.toString() === filtroCategoria;
-      const t = p.busqueda.toLowerCase();
-      const okBusqueda =
-        prod.nombre.toLowerCase().includes(t) ||
-        prod.sku.toLowerCase().includes(t) ||
-        prod.categoria_nombre.toLowerCase().includes(t);
-      return okEstado && okCategoria && okBusqueda;
-    });
-  }, [p.productos, p.filtroEstado, p.busqueda, filtroCategoria]);
-
-  const totalPaginas = Math.ceil(filtrados.length / POR_PAGINA);
-  const paginaAjustada = Math.min(pagina, Math.max(1, totalPaginas));
-  const productosPaginados = filtrados.slice(
-    (paginaAjustada - 1) * POR_PAGINA,
-    paginaAjustada * POR_PAGINA
-  );
-
-  useEffect(() => {
-    setPagina(1);
-  }, [p.filtroEstado, p.busqueda, filtroCategoria]);
-
-  const alertas = p.productos.filter(pr => pr.estado && pr.stock_actual <= pr.stock_minimo).length;
-  const costoTotal = p.productos.filter(pr => pr.estado).reduce((acc, pr) => acc + pr.precio_compra * pr.stock_actual, 0);
-  const totalActivos = p.productos.filter(pr => pr.estado).length;
 
   const Paginador = () => {
-    if (totalPaginas <= 1) return null;
-    const paginas = [];
-    for (let i = 1; i <= totalPaginas; i++) {
-      paginas.push(
-        <button
-          key={i}
-          onClick={() => setPagina(i)}
-          className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${
-            paginaAjustada === i
-              ? "bg-amber-700 text-white shadow-md"
-              : "bg-white text-stone-600 hover:bg-amber-50 border border-stone-200"
-          }`}
-        >
-          {i}
-        </button>
-      );
-    }
-
+    if (p.totalPaginas <= 1) return null;
     return (
-      <div className="flex items-center justify-center gap-2 pt-6">
+      <div className="flex items-center gap-1.5">
         <button
-          onClick={() => setPagina(p => Math.max(1, p - 1))}
-          disabled={paginaAjustada === 1}
-          className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          onClick={() => p.setPagina(Math.max(1, p.pagina - 1))}
+          disabled={p.paginaAjustada === 1}
+          className="w-7 h-7 rounded-md bg-white border border-[#EDE8E1] flex items-center justify-center text-[#7A6E65] hover:bg-[#F7F5F2] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3.5 h-3.5" />
         </button>
-        {paginas}
+
+        {Array.from({ length: p.totalPaginas }, (_, i) => i + 1).map((n) => (
+          <button
+            key={n}
+            onClick={() => p.setPagina(n)}
+            className={`w-7 h-7 rounded-md text-[11.5px] font-bold transition-all ${
+              p.paginaAjustada === n
+                ? "bg-[#C17B2A] text-white border border-[#C17B2A]"
+                : "bg-white text-[#5A4A3C] border border-[#EDE8E1] hover:bg-[#F7F5F2]"
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+
         <button
-          onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
-          disabled={paginaAjustada === totalPaginas}
-          className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          onClick={() => p.setPagina(Math.min(p.totalPaginas, p.pagina + 1))}
+          disabled={p.paginaAjustada === p.totalPaginas}
+          className="w-7 h-7 rounded-md bg-white border border-[#EDE8E1] flex items-center justify-center text-[#7A6E65] hover:bg-[#F7F5F2] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3.5 h-3.5" />
         </button>
-        <span className="text-xs text-stone-400 ml-2">
-          {filtrados.length} producto{filtrados.length !== 1 ? "s" : ""}
-        </span>
       </div>
     );
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 pb-12">
+      <div className="space-y-5 pb-12">
 
-        {/* ── Cabecera con textura de granos ──────────────────────────── */}
-        <div className="relative bg-gradient-to-br from-amber-900 via-amber-800 to-amber-700 rounded-3xl p-6 sm:p-8 text-white overflow-hidden shadow-xl shadow-amber-900/20">
-          <div className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: `radial-gradient(circle at 20% 40%, rgba(255,255,255,0.3) 2px, transparent 2px),
-                                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 1.5px, transparent 1.5px),
-                                radial-gradient(circle at 60% 70%, rgba(255,255,255,0.3) 2px, transparent 2px),
-                                radial-gradient(circle at 30% 80%, rgba(255,255,255,0.2) 1px, transparent 1px)`,
-              backgroundSize: "80px 80px, 120px 120px, 100px 100px, 90px 90px"
-            }}
-          />
-          <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Coffee className="w-7 h-7 text-amber-200" />
-                <h1 className="text-2xl font-extrabold tracking-tight">Catálogo de Productos</h1>
-              </div>
-              <p className="text-amber-100/80 text-sm max-w-lg">
-                Gestiona los productos de café y cacao. Los costos y el stock se actualizan desde el módulo de inventario.
-              </p>
-            </div>
-            <button
-              onClick={p.abrirModalCrear}
-              className="self-start sm:self-auto inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold text-sm px-5 py-3 rounded-2xl transition-all border border-white/30 shadow-lg"
-            >
-              <Plus className="w-4 h-4" /> Nuevo Producto
-            </button>
+        {/* ── Page header ── */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-[20px] font-black text-[#1C0F05] tracking-tight leading-tight">
+              Catálogo de Productos
+            </h1>
+            <p className="text-[12.5px] text-[#8B7D72] mt-1">
+              Gestiona el catálogo de tu ERP. Costos y stock se nutren desde compras.
+            </p>
           </div>
+          <button
+            onClick={p.abrirModalCrear}
+            className="inline-flex items-center gap-2 bg-[#C17B2A] hover:bg-[#A86522] text-white text-[12.5px] font-semibold px-4 py-2.5 rounded-lg transition-colors shadow-sm shadow-[#C17B2A]/20"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Nuevo producto
+          </button>
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-3xl border border-stone-200 p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
-              <Package className="w-7 h-7 text-amber-700" />
+        {/* ── KPIs ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="bg-white rounded-xl border border-[#EDE8E1] p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-[#FDF3E7] flex items-center justify-center shrink-0">
+              <Package className="w-5 h-5 text-[#C17B2A]" />
             </div>
             <div>
-              <p className="text-2xl font-extrabold text-stone-900 leading-none">{totalActivos}</p>
-              <p className="text-xs text-stone-400 mt-1 font-medium">Productos activos</p>
+              <p className="text-[22px] font-black text-[#1C0F05] leading-none">{p.totalActivos}</p>
+              <p className="text-[11px] text-[#9A8E82] mt-1 font-medium">Productos activos</p>
             </div>
           </div>
-          <div className={`rounded-3xl border p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow ${
-            alertas > 0 ? "bg-red-50 border-red-200" : "bg-white border-stone-200"
-          }`}>
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
-              alertas > 0 ? "bg-red-100" : "bg-emerald-50"
-            }`}>
-              {alertas > 0 ? <AlertTriangle className="w-7 h-7 text-red-600" /> : <CheckCircle className="w-7 h-7 text-emerald-600" />}
+          
+          <div className={`rounded-xl border p-4 flex items-center gap-3.5 ${p.alertas > 0 ? "bg-[#FCEBEB] border-[#F7C1C1]" : "bg-white border-[#EDE8E1]"}`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${p.alertas > 0 ? "bg-[#FAD4D4]" : "bg-[#EDFBF3]"}`}>
+              {p.alertas > 0 ? <AlertTriangle className="w-5 h-5 text-[#8B2020]" /> : <CheckCircle className="w-5 h-5 text-[#0D7A3E]" />}
             </div>
             <div>
-              <p className={`text-2xl font-extrabold leading-none ${alertas > 0 ? "text-red-700" : "text-stone-900"}`}>{alertas}</p>
-              <p className={`text-xs mt-1 font-medium ${alertas > 0 ? "text-red-400" : "text-stone-400"}`}>
-                {alertas > 0 ? "Con stock bajo" : "Sin alertas de stock"}
+              <p className={`text-[22px] font-black leading-none ${p.alertas > 0 ? "text-[#8B2020]" : "text-[#1C0F05]"}`}>{p.alertas}</p>
+              <p className={`text-[11px] mt-1 font-medium ${p.alertas > 0 ? "text-[#B73D3D]" : "text-[#9A8E82]"}`}>
+                {p.alertas > 0 ? "Con stock bajo" : "Sin alertas de stock"}
               </p>
             </div>
           </div>
-          <div className="bg-white rounded-3xl border border-stone-200 p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 rounded-2xl bg-stone-100 flex items-center justify-center shrink-0">
-              <TrendingUp className="w-7 h-7 text-stone-500" />
+
+          <div className="bg-white rounded-xl border border-[#EDE8E1] p-4 flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-lg bg-[#F7F5F2] flex items-center justify-center shrink-0 border border-[#EDE8E1]">
+              <TrendingUp className="w-5 h-5 text-[#7A6E65]" />
             </div>
             <div className="min-w-0">
-              <p className="text-xl font-extrabold text-stone-900 leading-none truncate">{sol(costoTotal)}</p>
-              <p className="text-xs text-stone-400 mt-1 font-medium">Valor ref. del inventario</p>
+              <p className="text-[20px] font-black text-[#1C0F05] leading-none truncate">{sol(p.costoTotal)}</p>
+              <p className="text-[11px] text-[#9A8E82] mt-1 font-medium">Valor ref. inventario</p>
             </div>
           </div>
         </div>
 
-        {/* Filtros y controles */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
-          <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center bg-white border border-stone-200 rounded-2xl p-1 gap-2 w-full shadow-sm focus-within:border-amber-700 focus-within:ring-2 focus-within:ring-amber-700/15 transition-all">
-            <div className="flex-1 flex items-center px-3 py-2">
-              <Search className="w-4 h-4 text-stone-300 shrink-0 mr-2" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, SKU..."
-                value={p.busqueda}
+        {/* ── Filtros y controles ── */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-3">
+          <div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center bg-white border border-[#EDE8E1] rounded-lg px-2 py-1 gap-2 w-full focus-within:border-[#C17B2A] focus-within:ring-2 focus-within:ring-[#C17B2A]/15 transition-all">
+            <div className="flex-1 flex items-center px-2 py-1.5">
+              <Search className="w-3.5 h-3.5 text-[#B5A99E] shrink-0 mr-2" />
+              <input type="text" placeholder="Buscar por nombre, SKU..." value={p.busqueda}
                 onChange={(e) => p.setBusqueda(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-stone-700 placeholder:text-stone-300 outline-none w-full"
+                className="flex-1 bg-transparent text-[12.5px] text-[#1C0F05] placeholder:text-[#C0B4AA] outline-none w-full"
               />
               {p.busqueda && (
-                <button onClick={() => p.setBusqueda("")} className="text-stone-300 hover:text-stone-500 transition-colors ml-2">
-                  <X className="w-4 h-4" />
+                <button onClick={() => p.setBusqueda("")} className="text-[#B5A99E] hover:text-[#5A4A3C]">
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
-            <div className="hidden sm:block w-px h-6 bg-stone-200 shrink-0" />
-            <div className="flex items-center px-2 w-full sm:w-auto">
-              <Filter className="w-4 h-4 text-stone-400 shrink-0 mr-2 hidden sm:block" />
-              <select 
-                value={filtroCategoria}
-                onChange={(e) => setFiltroCategoria(e.target.value)}
-                className="bg-transparent text-sm text-stone-600 font-medium outline-none cursor-pointer w-full sm:w-auto py-2 sm:py-1"
-              >
+            <div className="hidden sm:block w-px h-5 bg-[#EDE8E1] shrink-0" />
+            <div className="flex items-center px-2 w-full sm:w-auto pb-1 sm:pb-0">
+              <Filter className="w-3.5 h-3.5 text-[#B5A99E] shrink-0 mr-2 hidden sm:block" />
+              <select value={p.filtroCategoria} onChange={(e) => p.setFiltroCategoria(e.target.value)}
+                className="bg-transparent text-[11.5px] text-[#7A6E65] font-semibold outline-none cursor-pointer w-full sm:w-auto py-1">
                 <option value="">Todas las categorías</option>
-                {p.categoriasLista.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre_categoria}</option>
-                ))}
+                {p.categoriasLista.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
           </div>
 
           <div className="flex items-center gap-2 w-full lg:w-auto">
-            <div className="flex bg-stone-100 rounded-xl p-1 gap-1 flex-1 sm:flex-none">
+            <div className="flex bg-[#EDE8E1] rounded-lg p-1 gap-1 flex-1 sm:flex-none">
               {(["activos", "inactivos"] as const).map((tab) => (
                 <button key={tab} onClick={() => p.setFiltroEstado(tab)}
-                  className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                    p.filtroEstado === tab ? "bg-white text-stone-800 shadow-sm" : "text-stone-400 hover:text-stone-600"
+                  className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-[11.5px] font-semibold transition-all ${
+                    p.filtroEstado === tab ? "bg-white text-[#1C0F05] shadow-sm" : "text-[#8B7D72] hover:text-[#4A3728]"
                   }`}>
                   {tab === "activos" ? "Activos" : "Inactivos"}
                 </button>
               ))}
             </div>
-            <div className="hidden sm:flex bg-stone-100 rounded-xl p-1 gap-1">
+            <div className="hidden sm:flex bg-[#EDE8E1] rounded-lg p-1 gap-1">
               <button onClick={() => setVista("grid")} title="Cuadrícula"
-                className={`p-2 rounded-lg transition-all ${vista === "grid" ? "bg-white text-amber-700 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}>
+                className={`p-1.5 rounded-md transition-all ${vista === "grid" ? "bg-white text-[#C17B2A] shadow-sm" : "text-[#8B7D72] hover:text-[#4A3728]"}`}>
                 <LayoutGrid className="w-4 h-4" />
               </button>
               <button onClick={() => setVista("list")} title="Lista"
-                className={`p-2 rounded-lg transition-all ${vista === "list" ? "bg-white text-amber-700 shadow-sm" : "text-stone-400 hover:text-stone-600"}`}>
+                className={`p-1.5 rounded-md transition-all ${vista === "list" ? "bg-white text-[#C17B2A] shadow-sm" : "text-[#8B7D72] hover:text-[#4A3728]"}`}>
                 <List className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Contenido principal */}
+        {/* ── Contenido ── */}
         {p.cargando ? (
           vista === "grid" ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-              {Array.from({ length: 8 }).map((_, i) => <CardSkeleton key={i} />)}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {Array.from({ length: 10 }).map((_, i) => <CardSkeleton key={i} />)}
             </div>
-          ) : (
-            <TableSkeleton />
-          )
-        ) : productosPaginados.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-stone-200 py-20 flex flex-col items-center gap-4 shadow-sm">
-            <div className="w-20 h-20 rounded-2xl bg-stone-100 flex items-center justify-center">
-              <Coffee className="w-10 h-10 text-stone-300" />
+          ) : <TableSkeleton />
+        ) : p.productosPaginados.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-[#EDE8E1] py-20 flex flex-col items-center gap-4 shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-[#F7F5F2] border border-[#EDE8E1] flex items-center justify-center">
+              <Coffee className="w-7 h-7 text-[#C0B4AA]" />
             </div>
-            <div className="text-center">
-              <p className="text-stone-700 font-semibold text-lg">
-                {p.busqueda || filtroCategoria ? "Sin resultados" : "No hay productos"}
+            <div className="text-center px-4">
+              <p className="text-[#1C0F05] font-bold text-[15px]">
+                {p.busqueda || p.filtroCategoria ? "Sin resultados" : "No hay productos"}
               </p>
-              <p className="text-stone-400 text-sm mt-1 max-w-xs">
-                {p.busqueda || filtroCategoria ? "Intenta con otros términos o elimina los filtros." : "Comienza registrando el primer producto del catálogo."}
+              <p className="text-[#9A8E82] text-[12.5px] mt-1 max-w-xs">
+                {p.busqueda || p.filtroCategoria ? "Intenta con otros términos de búsqueda." : "Agrega el primer producto al catálogo."}
               </p>
             </div>
-            {!p.busqueda && !filtroCategoria && (
-              <button onClick={p.abrirModalCrear}
-                className="inline-flex items-center gap-2 bg-amber-700 hover:bg-amber-800 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors mt-2">
-                <Plus className="w-4 h-4" /> Registrar primer producto
-              </button>
-            )}
           </div>
         ) : vista === "grid" ? (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5">
-              {productosPaginados.map((prod) => (
-                <ProductCard key={prod.id} prod={prod}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {p.productosPaginados.map((prod) => (
+                <ProductCard key={prod.id} prod={prod} catNombre={p.getNombreCat(prod.category_id)}
                   onEdit={() => p.abrirModalEditar(prod)}
                   onDelete={() => p.handleEliminar(prod.id, prod.nombre)}
-                  onReactivar={() => p.handleReactivar(prod.id, prod.nombre)}
+                  onReactivar={() => p.handleReactivar(prod.id)}
                 />
               ))}
             </div>
-            <Paginador />
+            {p.totalPaginas > 1 && (
+              <div className="flex justify-center mt-6">
+                <Paginador />
+              </div>
+            )}
           </>
         ) : (
-          <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-stone-100 bg-stone-50/70">
-                  <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-stone-400">Producto</th>
-                  <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-stone-400">Precio</th>
-                  <th className="px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-stone-400">Stock</th>
-                  <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-stone-400">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-50">
-                {productosPaginados.map((prod) => (
-                  <ProductRow key={prod.id} prod={prod}
-                    onEdit={() => p.abrirModalEditar(prod)}
-                    onDelete={() => p.handleEliminar(prod.id, prod.nombre)}
-                    onReactivar={() => p.handleReactivar(prod.id, prod.nombre)}
-                  />
-                ))}
-              </tbody>
-            </table>
-            <div className="px-5 py-3 border-t border-stone-100 bg-stone-50/30 flex justify-end">
+          <div className="bg-white rounded-xl border border-[#EDE8E1] shadow-sm flex flex-col overflow-hidden">
+            {/* Contenedor del scroll de la tabla (Altura máxima de 300px) */}
+            <div className="overflow-auto max-h-[300px]">
+              <table className="w-full text-[12.5px] text-left relative">
+                <thead className="sticky top-0 z-10 shadow-[0_1px_0_#EDE8E1]">
+                  <tr className="bg-[#FDFAF7]">
+                    <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Producto</th>
+                    <th className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Precio</th>
+                    <th className="px-5 py-3 text-center text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Stock</th>
+                    <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#F5F0EB]">
+                  {p.productosPaginados.map((prod) => (
+                    <ProductRow key={prod.id} prod={prod} catNombre={p.getNombreCat(prod.category_id)}
+                      onEdit={() => p.abrirModalEditar(prod)}
+                      onDelete={() => p.handleEliminar(prod.id, prod.nombre)}
+                      onReactivar={() => p.handleReactivar(prod.id)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer de tabla (Paginador) */}
+            <div className="px-5 py-2.5 bg-[#FDFAF7] border-t border-[#EDE8E1] flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-[#9A8E82]">
+                {p.productosFiltrados.length} producto{p.productosFiltrados.length !== 1 ? "s" : ""}
+              </span>
               <Paginador />
             </div>
           </div>
         )}
 
-        {/* ── MODAL (SIN precio_compra NI stock_actual) ──────────────── */}
+        {/* ── MODAL ───────────────────────────────────────────────────────── */}
         {p.isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-            <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={p.cerrarModal} />
+            <div className="absolute inset-0 bg-[#1C0F05]/55 backdrop-blur-sm" onClick={p.cerrarModal} />
+            <div className="relative bg-white w-full max-w-[650px] mx-0 sm:mx-4 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[88vh] border border-[#EDE8E1]">
+              <div className="sm:hidden w-9 h-1 bg-[#DDD5CB] rounded-full mx-auto mt-3 mb-1 shrink-0" />
 
-            <div className="relative bg-white w-full max-w-2xl mx-0 sm:mx-4 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh] border border-stone-200/60">
-              <div className="sm:hidden w-10 h-1 bg-stone-200 rounded-full mx-auto mt-3 mb-1 shrink-0" />
-
-              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-stone-100">
+              <div className="shrink-0 flex items-start justify-between px-5 py-4 border-b border-[#F0EBE4]">
                 <div>
-                  <h2 className="text-lg font-extrabold text-stone-900">
+                  <h2 className="text-[15px] font-black text-[#1C0F05]">
                     {p.productoAEditar ? "Editar producto" : "Nuevo producto"}
                   </h2>
-                  <p className="text-xs text-stone-400 mt-0.5">
-                    {p.productoAEditar
-                      ? "Modifica los datos del producto. El costo y el stock se gestionan en inventario."
-                      : "Completa la información del producto. El costo y el stock se asignarán desde inventario."}
+                  <p className="text-[11px] text-[#9A8E82] mt-0.5">
+                    Define la información base. El costo y stock real se alimentan desde Compras.
                   </p>
                 </div>
                 <button onClick={p.cerrarModal}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors">
-                  <X className="w-4 h-4" />
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A6E65] hover:text-[#1C0F05] hover:bg-[#F7F5F2] transition-colors">
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <form id="productoForm" onSubmit={p.handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-8">
+              <form id="productoForm" onSubmit={p.handleSubmit} className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+                
                 <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Coffee className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Información básica</h3>
+                  <div className="flex items-center gap-2 mb-3.5 pb-2.5 border-b border-[#F0EBE4]">
+                    <Coffee className="w-3.5 h-3.5 text-[#C17B2A]" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[1px] text-[#9A8E82]">Información básica</h3>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-5">
                     <div className="shrink-0 mx-auto sm:mx-0">
-                      <input type="file" ref={p.fileInputRef} id="img-upload"
-                        accept="image/png,image/jpeg,image/webp" className="hidden"
-                        onChange={p.handleImageChange} />
+                      <input type="file" ref={p.fileInputRef} id="img-upload" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={p.handleImageChange} />
                       <label htmlFor="img-upload" className="cursor-pointer block">
-                        <div className="w-28 h-28 rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50 overflow-hidden flex items-center justify-center group hover:border-amber-400 transition-colors">
+                        <div className={`w-28 h-28 rounded-2xl border-2 border-dashed bg-[#FDFAF7] overflow-hidden flex items-center justify-center group transition-colors ${p.errores.imagen ? 'border-red-400' : 'border-[#DDD5CB] hover:border-[#C17B2A]'}`}>
                           {p.previewUrl ? (
-                            <img src={p.previewUrl.startsWith("blob:") ? p.previewUrl : BASE + p.previewUrl}
-                              alt="preview" className="w-full h-full object-cover" />
+                            <img src={p.previewUrl} alt="preview" className="w-full h-full object-cover" />
                           ) : (
                             <div className="flex flex-col items-center gap-1 group-hover:opacity-60 transition-opacity">
-                              <Coffee className="w-6 h-6 text-stone-300" />
-                              <span className="text-[10px] text-stone-300 font-medium text-center leading-tight">Agregar foto</span>
+                              <Coffee className="w-6 h-6 text-[#C0B4AA]" />
+                              <span className="text-[10px] text-[#B5A99E] font-bold text-center leading-tight mt-1">Subir foto</span>
                             </div>
                           )}
                         </div>
-                        <p className="text-[9px] text-stone-300 text-center mt-1">PNG · JPG · máx 2MB</p>
+                        <p className="text-[9px] text-[#B5A99E] text-center mt-1.5 font-medium">PNG, JPG (máx 2MB)</p>
                       </label>
+                      {p.errores.imagen && <p className="text-red-500 text-[9px] text-center mt-1">{p.errores.imagen}</p>}
                     </div>
-                    <div className="space-y-3">
+
+                    <div className="space-y-4">
                       <div>
-                        <Label req>Nombre del producto</Label>
-                        <input required type="text" value={p.formData.nombre}
-                          onChange={e => p.setFormData({ ...p.formData, nombre: e.target.value })}
-                          placeholder="Ej. Café Tostado Premium 250g" className={inputClass} />
+                        <FieldLabel required>Nombre del producto</FieldLabel>
+                        <input type="text" value={p.formData.nombre} onChange={e => p.setFormData({ ...p.formData, nombre: e.target.value })}
+                          placeholder="Ej. Café Lavado Premium" className={`${inputBase} ${p.errores.nombre ? inputError : ""}`} />
+                        {p.errores.nombre && <p className="text-red-500 text-[10.5px] mt-1 font-medium">{p.errores.nombre}</p>}
                       </div>
-                      <div>
-                        <Label req>Categoría</Label>
-                        <select required value={p.formData.categoria_id}
-                          onChange={e => p.setFormData({ ...p.formData, categoria_id: e.target.value })}
-                          className={inputClass + " cursor-pointer"}>
-                          <option value="" disabled>— Seleccione —</option>
-                          {p.categoriasLista.map(c => (
-                            <option key={c.id} value={c.id}>{c.nombre_categoria}</option>
-                          ))}
-                        </select>
-                      </div>
+                      
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <Label req hint="Código interno">SKU</Label>
-                          <input required type="text" value={p.formData.sku}
-                            onChange={e => p.setFormData({ ...p.formData, sku: e.target.value.toUpperCase().replace(/\s/g, "-") })}
-                            placeholder="PROD-001" className={inputClass + " font-mono uppercase"} />
+                          <FieldLabel required>Categoría</FieldLabel>
+                          <select value={p.formData.category_id} onChange={e => p.setFormData({ ...p.formData, category_id: e.target.value })}
+                            className={`${inputBase} cursor-pointer ${p.errores.category_id ? inputError : ""}`}>
+                            <option value="" disabled>— Seleccionar —</option>
+                            {p.categoriasLista.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                          </select>
+                          {p.errores.category_id && <p className="text-red-500 text-[10.5px] mt-1 font-medium">{p.errores.category_id}</p>}
                         </div>
                         <div>
-                          <Label>Código de Barras</Label>
-                          <input type="text" value={p.formData.codigo_barras}
-                            onChange={e => p.setFormData({ ...p.formData, codigo_barras: e.target.value })}
-                            placeholder="EAN / UPC" className={inputClass + " font-mono"} />
+                          <FieldLabel required hint="Único">SKU</FieldLabel>
+                          <input type="text" value={p.formData.sku} onChange={e => p.setFormData({ ...p.formData, sku: e.target.value.toUpperCase().replace(/\s/g, "-") })}
+                            placeholder="PROD-001" className={`${inputBase} font-mono uppercase ${p.errores.sku ? inputError : ""}`} />
+                          {p.errores.sku && <p className="text-red-500 text-[10.5px] mt-1 font-medium">{p.errores.sku}</p>}
                         </div>
                       </div>
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <Label>Descripción</Label>
-                    <textarea rows={3} value={p.formData.descripcion}
-                      onChange={e => p.setFormData({ ...p.formData, descripcion: e.target.value })}
-                      placeholder="Notas, características, origen…" className={inputClass + " resize-none"} />
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <FieldLabel>Código de Barras</FieldLabel>
+                      <input type="text" value={p.formData.codigo_barras} onChange={e => p.setFormData({ ...p.formData, codigo_barras: e.target.value })}
+                        placeholder="EAN / UPC (Opcional)" className={`${inputBase} font-mono`} />
+                    </div>
+                    <div>
+                      <FieldLabel>Descripción (Perfil de taza, notas)</FieldLabel>
+                      <input type="text" value={p.formData.descripcion} onChange={e => p.setFormData({ ...p.formData, descripcion: e.target.value })}
+                        placeholder="Breve descripción..." className={inputBase} />
+                    </div>
                   </div>
                 </section>
 
                 <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <DollarSign className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Precios de venta</h3>
+                  <div className="flex items-center gap-2 mb-3.5 pb-2.5 border-b border-[#F0EBE4]">
+                    <DollarSign className="w-3.5 h-3.5 text-[#C17B2A]" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[1px] text-[#9A8E82]">Política de Ventas</h3>
                   </div>
-                  <div className="bg-stone-50 rounded-2xl p-4 space-y-3">
+                  <div className="bg-[#FDFAF7] border border-[#F0EBE4] rounded-xl p-3.5 space-y-3">
                     {[
-                      { label: "Precio minorista", key: "precio_minorista", color: "emerald" },
-                      { label: "Precio mayorista", key: "precio_mayorista", color: "blue" },
-                    ].map(({ label, key }) => (
+                      { label: "Precio Minorista", key: "precio_minorista", color: "text-[#0D7A3E]", bg: "bg-[#EDFBF3]", border: "border-[#9FE1CB]" },
+                      { label: "Precio Mayorista", key: "precio_mayorista", color: "text-[#1A5FA0]", bg: "bg-[#E6F1FB]", border: "border-[#B5D4F4]" },
+                    ].map(({ label, key, color, bg, border }) => (
                       <div key={key}>
-                        {key !== "precio_minorista" && <div className="border-t border-stone-200 mb-3" />}
+                        {key !== "precio_minorista" && <div className="border-t border-[#F0EBE4] mb-3" />}
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-[10px] font-bold
-                              ${key === "precio_minorista" ? "bg-emerald-50 border border-emerald-100 text-emerald-600" :
-                              "bg-blue-50 border border-blue-100 text-blue-600"}`}>
+                          <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 text-[9px] font-black ${bg} ${border} ${color}`}>
                             {key === "precio_minorista" ? "MIN" : "MAY"}
                           </div>
                           <div className="flex-1">
-                            <p className="text-[11px] text-stone-400 font-semibold">{label} <span className="text-amber-600">*</span></p>
+                            <p className="text-[11.5px] text-[#5A4A3C] font-bold">{label} <span className="text-[#C17B2A]">*</span></p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm text-stone-400 font-medium">S/</span>
-                            <input required type="number" step="0.01" min="0"
-                              onKeyDown={p.preventInvalidNumberInput}
-                              value={(p.formData as any)[key]}
-                              onChange={e => p.setFormData({ ...p.formData, [key]: Number(e.target.value) })}
-                              className={`w-28 px-3 py-2 rounded-xl border text-sm font-bold text-right outline-none transition-all
-                                  ${key === "precio_minorista" ? "border-emerald-200 bg-white text-emerald-700 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/15" :
-                                  "border-blue-200 bg-white text-blue-700 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/15"}`}
+                            <span className="text-[12.5px] text-[#9A8E82] font-semibold">S/</span>
+                            <input required type="number" step="0.01" min="0" onKeyDown={p.preventInvalidNumberInput}
+                              value={(p.formData as any)[key]} onChange={e => p.setFormData({ ...p.formData, [key]: Number(e.target.value) })}
+                              className={`w-28 px-3 py-1.5 rounded-lg border text-[12.5px] font-black text-right outline-none transition-all ${color} ${
+                                p.errores[key] ? inputError : "border-[#DDD5CB] bg-white focus:border-[#C17B2A] focus:ring-2 focus:ring-[#C17B2A]/15"
+                              }`}
                             />
                           </div>
                         </div>
+                        {p.errores[key] && <p className="text-red-500 text-[10.5px] mt-1 text-right font-medium">{p.errores[key]}</p>}
                       </div>
                     ))}
                   </div>
-                  <label className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-stone-200 hover:bg-stone-50 cursor-pointer transition-colors">
-                    <input type="checkbox" checked={p.formData.afecto_igv}
-                      onChange={e => p.setFormData({ ...p.formData, afecto_igv: e.target.checked })}
-                      className="w-4 h-4 text-amber-600 rounded border-stone-300 focus:ring-amber-500" />
+                  
+                  <label className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-[#EDE8E1] hover:bg-[#FDFAF7] cursor-pointer transition-colors">
+                    <input type="checkbox" checked={p.formData.afecto_igv} onChange={e => p.setFormData({ ...p.formData, afecto_igv: e.target.checked })}
+                      className="w-4 h-4 text-[#C17B2A] rounded border-[#DDD5CB] focus:ring-[#C17B2A]" />
                     <div>
-                      <p className="text-sm font-semibold text-stone-700 leading-tight">Afecto a IGV (18%)</p>
-                      <p className="text-[11px] text-stone-400">Se aplicará en comprobantes de facturación</p>
+                      <p className="text-[12.5px] font-bold text-[#1C0F05] leading-tight">Afecto a IGV (18%)</p>
+                      <p className="text-[10px] text-[#9A8E82] mt-0.5">Determina si el producto graba impuestos en facturación.</p>
                     </div>
                   </label>
                 </section>
 
                 <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Package className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Inventario</h3>
+                  <div className="flex items-center gap-2 mb-3.5 pb-2.5 border-b border-[#F0EBE4]">
+                    <Package className="w-3.5 h-3.5 text-[#C17B2A]" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[1px] text-[#9A8E82]">Inventario</h3>
                   </div>
-                  <div className="bg-blue-50/50 border border-blue-100 p-3 rounded-xl mb-3 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-blue-800 leading-tight">
-                      El stock actual y el precio de compra se actualizan automáticamente al registrar lotes en <strong>Compras/Inventarios</strong>. Aquí solo defines la unidad y el stock mínimo de alerta.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label req>Unidad de medida</Label>
-                      <select required value={p.formData.unidad_medida}
-                        onChange={e => p.setFormData({ ...p.formData, unidad_medida: e.target.value })}
-                        className={inputClass + " cursor-pointer"}>
+                      <FieldLabel required>Unidad de medida</FieldLabel>
+                      <select required value={p.formData.unidad_medida} onChange={e => p.setFormData({ ...p.formData, unidad_medida: e.target.value })}
+                        className={`${inputBase} cursor-pointer ${p.errores.unidad_medida ? inputError : ""}`}>
                         <option value="Unidades">Unidades</option>
+                        <option value="Sacos">Sacos</option>
                         <option value="Kilogramos">Kilogramos (Kg)</option>
                         <option value="Gramos">Gramos (g)</option>
                         <option value="Litros">Litros (L)</option>
                         <option value="Quintales">Quintales (qq)</option>
-                        <option value="Libras">Libras (lb)</option>
                       </select>
+                      {p.errores.unidad_medida && <p className="text-red-500 text-[10.5px] mt-1 font-medium">{p.errores.unidad_medida}</p>}
                     </div>
                     <div>
-                      <Label req>Alerta stock mínimo</Label>
-                      <input required type="number" step="0.01" min="0"
-                        onKeyDown={p.preventInvalidNumberInput}
-                        value={p.formData.stock_minimo}
-                        onChange={e => p.setFormData({ ...p.formData, stock_minimo: Number(e.target.value) })}
-                        className={inputClass} />
+                      <FieldLabel required hint="Alerta de reposición">Stock mínimo</FieldLabel>
+                      <input required type="number" step="0.01" min="0" onKeyDown={p.preventInvalidNumberInput}
+                        value={p.formData.stock_minimo} onChange={e => p.setFormData({ ...p.formData, stock_minimo: Number(e.target.value) })}
+                        className={`${inputBase} ${p.errores.stock_minimo ? inputError : ""}`} />
+                      {p.errores.stock_minimo && <p className="text-red-500 text-[10.5px] mt-1 font-medium">{p.errores.stock_minimo}</p>}
                     </div>
                   </div>
                 </section>
               </form>
 
-              <div className="shrink-0 flex items-center gap-3 px-6 py-4 border-t border-stone-100 bg-white rounded-b-3xl">
+              <div className="shrink-0 flex items-center gap-2.5 px-5 py-4 border-t border-[#F0EBE4] bg-white rounded-b-2xl">
                 <button type="button" onClick={p.cerrarModal}
-                  className="flex-1 py-3 rounded-2xl text-sm font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 transition-colors">
+                  className="flex-1 py-2.5 rounded-lg text-[12.5px] font-semibold text-[#5A4A3C] bg-[#F7F5F2] border border-[#EDE8E1] hover:bg-[#EDE8E1] transition-colors">
                   Cancelar
                 </button>
                 <button form="productoForm" type="submit" disabled={p.guardando}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold text-white bg-amber-700 hover:bg-amber-800 disabled:opacity-60 active:scale-[0.98] transition-all shadow-md shadow-amber-800/20">
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12.5px] font-semibold text-white bg-[#C17B2A] hover:bg-[#A86522] disabled:opacity-60 active:scale-[0.98] transition-all shadow-sm shadow-[#C17B2A]/25">
                   {p.guardando ? (
-                    <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando…</>
+                    <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando…</>
                   ) : (
-                    <><Save className="w-4 h-4" />{p.productoAEditar ? "Guardar cambios" : "Guardar producto"}</>
+                    <><Save className="w-3.5 h-3.5" /> {p.productoAEditar ? "Actualizar" : "Guardar"}</>
                   )}
                 </button>
               </div>

@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from "sonner";
-import api from "../../../lib/api";
 
 export interface Producto {
   id: number;
-  categoria_id: number;
-  categoria_nombre: string;
+  category_id: number;
   sku: string;
   codigo_barras: string | null;
   nombre: string;
@@ -19,11 +17,13 @@ export interface Producto {
   stock_minimo: number;
   imagen_url: string | null;
   estado: boolean;
+  category?: { id: number; nombre: string }; // Relación de Laravel
 }
 
 export interface Categoria {
   id: number;
-  nombre_categoria: string;
+  nombre: string;
+  estado: boolean;
 }
 
 export const useProductos = () => {
@@ -31,19 +31,23 @@ export const useProductos = () => {
   const [categoriasLista, setCategoriasLista] = useState<Categoria[]>([]);
   const [cargando, setCargando] = useState(true);
   const [filtroEstado, setFiltroEstado] = useState<'activos' | 'inactivos'>('activos');
+  const [filtroCategoria, setFiltroCategoria] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  const [productoAEditar, setProductoAEditar] = useState<number | null>(null);
+  const [productoAEditar, setProductoAEditar] = useState<Producto | null>(null);
+  const [errores, setErrores] = useState<Record<string, string>>({});
+
+  const POR_PAGINA = 10;
+  const [pagina, setPagina] = useState(1);
   
   const [archivoImagen, setArchivoImagen] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Los campos ocultos precio_compra y stock_actual no se muestran en el formulario
   const [formData, setFormData] = useState({
-    categoria_id: "",
+    category_id: "",
     sku: "",
     codigo_barras: "",
     nombre: "",
@@ -54,21 +58,26 @@ export const useProductos = () => {
     unidad_medida: "Unidades",
     stock_minimo: 5,
     estado: true,
-    // campos ocultos (solo para mantener el valor en edición)
     precio_compra: 0,
     stock_actual: 0,
   });
 
+  // --- CARGAR DATOS ---
   const fetchDatos = async () => {
     try {
       setCargando(true);
       const [resProductos, resCategorias] = await Promise.all([
-        api.get("/productos"),
-        api.get("/categorias")
+        fetch("/api/products", { headers: { Accept: "application/json" } }),
+        fetch("/api/categories", { headers: { Accept: "application/json" } })
       ]);
-      if (resProductos.data.success) setProductos(resProductos.data.data);
-      if (resCategorias.data.success) {
-        setCategoriasLista(resCategorias.data.data.filter((c: any) => c.estado));
+
+      if (resProductos.ok) {
+        const jsonProd = await resProductos.json();
+        setProductos(jsonProd.data);
+      }
+      if (resCategorias.ok) {
+        const jsonCat = await resCategorias.json();
+        setCategoriasLista(jsonCat.data.filter((c: Categoria) => c.estado));
       }
     } catch (error) {
       toast.error("Error de conexión con el servidor.");
@@ -79,17 +88,36 @@ export const useProductos = () => {
 
   useEffect(() => { fetchDatos(); }, []);
 
+  // --- MANEJO DE IMAGEN ---
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const maxSize = 2 * 1024 * 1024; // 2MB dictado por el FormRequest
+      if (file.size > maxSize) {
+        toast.error("La imagen es muy pesada. Máximo 2MB.");
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+      setArchivoImagen(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setErrores(prev => ({ ...prev, imagen: "" }));
+    }
+  };
+
+  // --- GUARDAR O ACTUALIZAR ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.categoria_id) return toast.error("Seleccione una categoría.");
-    if (formData.precio_minorista < 0) return toast.error("El precio no puede ser negativo.");
+    setErrores({});
+    if (!formData.category_id) return toast.error("Seleccione una categoría.");
+    if (formData.precio_minorista < 0 || formData.precio_mayorista < 0) {
+        return toast.error("Los precios no pueden ser negativos.");
+    }
 
     try {
       setGuardando(true);
-      const formPayload = new FormData();
       
-      // Campos siempre enviados
-      formPayload.append("categoria_id", formData.categoria_id);
+      const formPayload = new FormData();
+      formPayload.append("category_id", formData.category_id);
       formPayload.append("sku", formData.sku);
       formPayload.append("codigo_barras", formData.codigo_barras || "");
       formPayload.append("nombre", formData.nombre);
@@ -100,79 +128,114 @@ export const useProductos = () => {
       formPayload.append("unidad_medida", formData.unidad_medida);
       formPayload.append("stock_minimo", formData.stock_minimo.toString());
       formPayload.append("estado", formData.estado ? "1" : "0");
-
-      // Solo en edición enviamos precio_compra y stock_actual (para que no se pierdan)
-      if (productoAEditar) {
-        formPayload.append("precio_compra", formData.precio_compra.toString());
-        formPayload.append("stock_actual", formData.stock_actual.toString());
-      }
+      
+      formPayload.append("precio_compra", formData.precio_compra.toString());
+      formPayload.append("stock_actual", formData.stock_actual.toString());
 
       if (archivoImagen) {
         formPayload.append("imagen", archivoImagen);
       }
 
-      let response;
+      let url = "/api/products";
       if (productoAEditar) {
+        url = `/api/products/${productoAEditar.id}`;
         formPayload.append("_method", "PUT");
-        response = await api.post(`/productos/${productoAEditar}`, formPayload, {
-          headers: { "Content-Type": "multipart/form-data" }
-        });
-      } else {
-        response = await api.post("/productos", formPayload, {
-          headers: { "Content-Type": "multipart/form-data" }
-        });
       }
-      
-      if (response.data.success) {
-        toast.success(response.data.message);
-        cerrarModal();
-        fetchDatos();
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { Accept: "application/json" },
+        body: formPayload,
+      });
+
+      if (!response.ok) {
+        if (response.status === 422) {
+          const data = await response.json();
+          const validacionErrores: Record<string, string> = {};
+          if (data.errors) {
+            Object.keys(data.errors).forEach((key) => {
+              validacionErrores[key] = data.errors[key][0];
+            });
+          }
+          setErrores(validacionErrores);
+          toast.error("Revisa los campos en rojo.");
+          return;
+        }
+        throw new Error("Error en el servidor");
       }
+
+      toast.success(productoAEditar ? "Producto actualizado" : "Producto registrado");
+      cerrarModal();
+      fetchDatos();
     } catch (error: any) {
-      if (error.response?.status === 422) {
-        const errors = error.response.data.errors;
-        const firstError = Object.values(errors)[0] as string[];
-        toast.error(firstError[0]);
-      } else {
-        toast.error("Error al procesar el producto.");
-      }
+      toast.error("Error al procesar el producto.");
     } finally {
       setGuardando(false);
     }
   };
 
+  // --- ESTADOS LÓGICOS ---
+  const cambiarEstado = async (producto: Producto, nuevoEstado: boolean) => {
+    try {
+      const payload = { ...producto, estado: nuevoEstado };
+      const response = await fetch(`/api/products/${producto.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        toast.success(nuevoEstado ? "Producto publicado" : "Producto retirado");
+        await fetchDatos();
+      } else {
+        toast.error("No se pudo cambiar el estado.");
+      }
+    } catch (error) {
+      toast.error("Error de conexión.");
+    }
+  };
+
+  const handleEliminar = (id: number, nombre: string) => {
+    if (window.confirm(`¿Retirar ${nombre} del catálogo?`)) {
+      const prod = productos.find(p => p.id === id);
+      if (prod) cambiarEstado(prod, false);
+    }
+  };
+
+  const handleReactivar = (id: number) => {
+    const prod = productos.find(p => p.id === id);
+    if (prod) cambiarEstado(prod, true);
+  };
+
+  // --- MODAL ---
   const abrirModalCrear = () => {
     setProductoAEditar(null);
     setArchivoImagen(null);
     setPreviewUrl(null);
+    setErrores({});
     if (fileInputRef.current) fileInputRef.current.value = "";
     
     setFormData({
-      categoria_id: "",
-      sku: "",
-      codigo_barras: "",
-      nombre: "",
-      descripcion: "",
-      precio_minorista: 0,
-      precio_mayorista: 0,
-      afecto_igv: true,
-      unidad_medida: "Unidades",
-      stock_minimo: 5,
-      estado: true,
-      precio_compra: 0,
-      stock_actual: 0,
+      category_id: "", sku: "", codigo_barras: "", nombre: "", descripcion: "",
+      precio_minorista: 0, precio_mayorista: 0, afecto_igv: true,
+      unidad_medida: "Unidades", stock_minimo: 5, estado: true,
+      precio_compra: 0, stock_actual: 0,
     });
     setIsModalOpen(true);
   };
 
   const abrirModalEditar = (prod: Producto) => {
-    setProductoAEditar(prod.id);
+    setProductoAEditar(prod);
     setArchivoImagen(null);
-    setPreviewUrl(prod.imagen_url || null);
+    setPreviewUrl(prod.imagen_url ? `/storage/${prod.imagen_url}` : null);
+    setErrores({});
     if (fileInputRef.current) fileInputRef.current.value = "";
 
     setFormData({
-      categoria_id: prod.categoria_id.toString(),
+      category_id: prod.category_id.toString(),
       sku: prod.sku,
       codigo_barras: prod.codigo_barras || "",
       nombre: prod.nombre,
@@ -195,48 +258,63 @@ export const useProductos = () => {
     setArchivoImagen(null);
     if (previewUrl && previewUrl.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const maxSize = 2 * 1024 * 1024;
-      if (file.size > maxSize) {
-        toast.error("La imagen es muy pesada. Máximo 2MB.");
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        return;
-      }
-      setArchivoImagen(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
-  const handleEliminar = async (id: number, nombre: string) => {
-    if (!window.confirm(`¿Retirar ${nombre} del catálogo?`)) return;
-    try {
-      await api.delete(`/productos/${id}`);
-      toast.success("Producto desactivado");
-      fetchDatos();
-    } catch (error) { toast.error("No se pudo desactivar el producto"); }
-  };
-
-  const handleReactivar = async (id: number, nombre: string) => {
-    try {
-      await api.put(`/productos/${id}/restaurar`);
-      toast.success("Producto reactivado");
-      fetchDatos();
-    } catch (error) { toast.error("No se pudo reactivar el producto"); }
+    setErrores({});
   };
 
   const preventInvalidNumberInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (['e', 'E', '-', '+'].includes(e.key)) e.preventDefault();
   };
 
+  // --- FILTROS Y PAGINACIÓN ---
+  const getNombreCat = (id: number) => {
+    return categoriasLista.find(c => c.id === id)?.nombre || "Sin Categoría";
+  };
+
+  const productosFiltrados = useMemo(() => {
+    return productos.filter((prod) => {
+      const okEstado = filtroEstado === "activos" ? prod.estado : !prod.estado;
+      const okCategoria = filtroCategoria === "" || prod.category_id.toString() === filtroCategoria;
+      
+      const catNombre = getNombreCat(prod.category_id).toLowerCase();
+      const t = busqueda.toLowerCase();
+      const okBusqueda =
+        prod.nombre.toLowerCase().includes(t) ||
+        prod.sku.toLowerCase().includes(t) ||
+        catNombre.includes(t);
+        
+      return okEstado && okCategoria && okBusqueda;
+    });
+  }, [productos, filtroEstado, busqueda, filtroCategoria, categoriasLista]);
+
+  const totalPaginas = Math.ceil(productosFiltrados.length / POR_PAGINA) || 1;
+  const paginaAjustada = Math.min(pagina, totalPaginas);
+  
+  const productosPaginados = useMemo(() => {
+    const inicio = (paginaAjustada - 1) * POR_PAGINA;
+    return productosFiltrados.slice(inicio, inicio + POR_PAGINA);
+  }, [productosFiltrados, paginaAjustada]);
+
+  useEffect(() => {
+    if (pagina !== paginaAjustada) setPagina(paginaAjustada);
+  }, [paginaAjustada, pagina]);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [filtroEstado, busqueda, filtroCategoria]);
+
+  const alertas = productos.filter(pr => pr.estado && pr.stock_actual <= pr.stock_minimo).length;
+  const costoTotal = productos.filter(pr => pr.estado).reduce((acc, pr) => acc + pr.precio_compra * pr.stock_actual, 0);
+  const totalActivos = productos.filter(pr => pr.estado).length;
+
   return {
     productos, categoriasLista, cargando, filtroEstado, setFiltroEstado,
-    busqueda, setBusqueda, isModalOpen, guardando, productoAEditar,
+    busqueda, setBusqueda, filtroCategoria, setFiltroCategoria,
+    isModalOpen, guardando, productoAEditar,
     previewUrl, fileInputRef, formData, setFormData, handleSubmit,
     abrirModalCrear, abrirModalEditar, cerrarModal, handleEliminar, handleReactivar,
-    handleImageChange, preventInvalidNumberInput
+    handleImageChange, preventInvalidNumberInput, errores, 
+    pagina, setPagina, totalPaginas, paginaAjustada,
+    productosFiltrados, productosPaginados, getNombreCat,
+    alertas, costoTotal, totalActivos
   };
 };

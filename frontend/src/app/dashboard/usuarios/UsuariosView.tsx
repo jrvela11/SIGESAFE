@@ -2,191 +2,192 @@ import React from "react";
 import { DashboardLayout } from "../dashboard/DashboardLayout";
 import { useUsuarios } from "./useUsuarios";
 import {
-  Plus, Edit, Trash2, Search, X, Save, Shield, Users, UserCheck,
-  RefreshCw, Key, Briefcase, ChevronLeft, ChevronRight, Coffee
+  Plus, Edit, Trash2, Search, X, Save,
+  Shield, Users, UserCheck, RefreshCw, Key,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 
-const Label: React.FC<{ children: React.ReactNode; req?: boolean; hint?: string }> = ({ children, req, hint }) => (
+// ─── Sub-componentes de UI ────────────────────────────────────────────────────
+
+const FieldLabel: React.FC<{
+  children: React.ReactNode;
+  required?: boolean;
+  hint?: string;
+}> = ({ children, required, hint }) => (
   <div className="flex items-center justify-between mb-1.5">
-    <p className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-      {children}{req && <span className="text-amber-600 ml-0.5">*</span>}
-    </p>
-    {hint && <span className="text-[10px] text-stone-400">{hint}</span>}
+    <span className="text-[10px] font-bold text-[#7A6E65] uppercase tracking-[0.8px]">
+      {children}
+      {required && <span className="text-[#C17B2A] ml-0.5">*</span>}
+    </span>
+    {hint && <span className="text-[10px] text-[#B5A99E]">{hint}</span>}
   </div>
 );
 
-const inputClass =
-  "w-full px-3.5 py-2.5 rounded-xl border border-stone-200 bg-white text-sm text-stone-800 " +
-  "outline-none transition focus:border-amber-700 focus:ring-2 focus:ring-amber-700/15 " +
-  "placeholder:text-stone-300";
-const errorInputClass = "border-red-300 focus:border-red-500 focus:ring-red-500/15";
+const inputBase =
+  "w-full px-3 py-2.5 rounded-lg border border-[#DDD5CB] bg-[#FDFAF7] text-[12.5px] " +
+  "text-[#2C1A0E] outline-none transition focus:border-[#C17B2A] focus:ring-2 " +
+  "focus:ring-[#C17B2A]/15 placeholder:text-[#C0B4AA]";
 
-const getRoleBadge = (role: string) => {
-  switch (role) {
-    case "admin":
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200">
-          Administrador
-        </span>
-      );
-    case "logistica":
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-orange-100 text-orange-700 border border-orange-200">
-          Logística
-        </span>
-      );
-    case "repartidor":
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-teal-100 text-teal-700 border border-teal-200">
-          Repartidor
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
-          Vendedor
-        </span>
-      );
-  }
+const inputError = "border-red-300 focus:border-red-500 focus:ring-red-500/15";
+
+const RoleBadge: React.FC<{ role: string }> = ({ role }) => {
+  const map: Record<string, { label: string; className: string }> = {
+    admin: {
+      label: "Administrador",
+      className: "bg-[#F1EFFE] text-[#5B45C2] border border-[#D9D2F9]",
+    },
+    logistica: {
+      label: "Logística",
+      className: "bg-[#FEF3E6] text-[#944F0A] border border-[#F5D5A3]",
+    },
+    repartidor: {
+      label: "Repartidor",
+      className: "bg-[#EDFBF3] text-[#0D6E3F] border border-[#9FE1CB]",
+    },
+    vendedor: {
+      label: "Vendedor",
+      className: "bg-[#E6F1FB] text-[#1A5FA0] border border-[#B5D4F4]",
+    },
+  };
+  const cfg = map[role] ?? map.vendedor;
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-bold ${cfg.className}`}>
+      {cfg.label}
+    </span>
+  );
 };
+
+// ─── Vista principal ──────────────────────────────────────────────────────────
 
 export const UsuariosView = () => {
   const u = useUsuarios();
 
   const Paginador = () => {
     if (u.totalPaginas <= 1) return null;
-    const paginas = [];
-    for (let i = 1; i <= u.totalPaginas; i++) {
-      paginas.push(
-        <button
-          key={i}
-          onClick={() => u.setPagina(i)}
-          className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${
-            u.paginaAjustada === i
-              ? "bg-amber-700 text-white shadow-md"
-              : "bg-white text-stone-600 hover:bg-amber-50 border border-stone-200"
-          }`}
-        >
-          {i}
-        </button>
-      );
-    }
-
     return (
-      <div className="flex items-center justify-center gap-2 pt-6">
+      <div className="flex items-center gap-1.5">
         <button
           onClick={() => u.setPagina((p) => Math.max(1, p - 1))}
           disabled={u.paginaAjustada === 1}
-          className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          className="w-7 h-7 rounded-md bg-white border border-[#EDE8E1] flex items-center justify-center text-[#7A6E65] hover:bg-[#F7F5F2] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3.5 h-3.5" />
         </button>
-        {paginas}
+
+        {Array.from({ length: u.totalPaginas }, (_, i) => i + 1).map((n) => (
+          <button
+            key={n}
+            onClick={() => u.setPagina(n)}
+            className={`w-7 h-7 rounded-md text-[11.5px] font-bold transition-all ${
+              u.paginaAjustada === n
+                ? "bg-[#C17B2A] text-white border border-[#C17B2A]"
+                : "bg-white text-[#5A4A3C] border border-[#EDE8E1] hover:bg-[#F7F5F2]"
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+
         <button
           onClick={() => u.setPagina((p) => Math.min(u.totalPaginas, p + 1))}
           disabled={u.paginaAjustada === u.totalPaginas}
-          className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-amber-50 hover:text-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+          className="w-7 h-7 rounded-md bg-white border border-[#EDE8E1] flex items-center justify-center text-[#7A6E65] hover:bg-[#F7F5F2] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3.5 h-3.5" />
         </button>
-        <span className="text-xs text-stone-400 ml-2">
-          {u.usuariosFiltrados?.length ?? 0} usuario{(u.usuariosFiltrados?.length ?? 0) !== 1 ? "s" : ""}
-        </span>
       </div>
     );
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 pb-12">
-        {/* Banner */}
-        <div className="relative bg-gradient-to-br from-amber-900 via-amber-800 to-amber-700 rounded-3xl p-6 sm:p-8 text-white overflow-hidden shadow-xl shadow-amber-900/20">
-          <div className="absolute inset-0 opacity-10"
-            style={{
-              backgroundImage: `radial-gradient(circle at 20% 40%, rgba(255,255,255,0.3) 2px, transparent 2px),
-                                radial-gradient(circle at 80% 20%, rgba(255,255,255,0.2) 1.5px, transparent 1.5px),
-                                radial-gradient(circle at 60% 70%, rgba(255,255,255,0.3) 2px, transparent 2px),
-                                radial-gradient(circle at 30% 80%, rgba(255,255,255,0.2) 1px, transparent 1px)`,
-              backgroundSize: "80px 80px, 120px 120px, 100px 100px, 90px 90px"
-            }}
-          />
-          <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Shield className="w-7 h-7 text-amber-200" />
-                <h1 className="text-2xl font-extrabold tracking-tight">Cuentas de Usuario</h1>
-              </div>
-              <p className="text-amber-100/80 text-sm max-w-lg">
-                Administra los accesos al sistema ERP y vincúlalos a tu personal.
-              </p>
-            </div>
-            <button
-              onClick={u.abrirModalCrear}
-              className="self-start sm:self-auto inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-bold text-sm px-5 py-3 rounded-2xl transition-all border border-white/30 shadow-lg"
+      <div className="space-y-5 pb-12">
+
+        {/* ── Page header ── */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-[20px] font-black text-[#1C0F05] tracking-tight leading-tight">
+              Cuentas de usuario
+            </h1>
+            <p className="text-[12.5px] text-[#8B7D72] mt-1">
+              Administra los accesos y roles del sistema de gestión
+            </p>
+          </div>
+          <button
+            onClick={u.abrirModalCrear}
+            className="inline-flex items-center gap-2 bg-[#C17B2A] hover:bg-[#A86522] text-white text-[12.5px] font-semibold px-4 py-2.5 rounded-lg transition-colors shadow-sm shadow-[#C17B2A]/20"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Nuevo usuario
+          </button>
+        </div>
+
+        {/* ── KPIs ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            {
+              icon: <Users className="w-5 h-5 text-[#C17B2A]" />,
+              iconBg: "bg-[#FDF3E7]",
+              value: u.totalUsuarios,
+              label: "Total registrados",
+            },
+            {
+              icon: <UserCheck className="w-5 h-5 text-[#0D7A3E]" />,
+              iconBg: "bg-[#EDFBF3]",
+              value: u.usuariosActivos,
+              label: "Cuentas activas",
+            },
+            {
+              icon: <Shield className="w-5 h-5 text-[#5B45C2]" />,
+              iconBg: "bg-[#F1EFFE]",
+              value: u.totalAdmins,
+              label: "Administradores",
+            },
+          ].map((kpi) => (
+            <div
+              key={kpi.label}
+              className="bg-white rounded-xl border border-[#EDE8E1] p-4 flex items-center gap-3.5"
             >
-              <Plus className="w-4 h-4" /> Nuevo Usuario
-            </button>
-          </div>
+              <div className={`w-10 h-10 rounded-lg ${kpi.iconBg} flex items-center justify-center shrink-0`}>
+                {kpi.icon}
+              </div>
+              <div>
+                <p className="text-[22px] font-black text-[#1C0F05] leading-none">{kpi.value}</p>
+                <p className="text-[11px] text-[#9A8E82] mt-1 font-medium">{kpi.label}</p>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-3xl border border-stone-200 p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
-              <Users className="w-7 h-7 text-amber-700" />
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold text-stone-900 leading-none">{u.totalUsuarios}</p>
-              <p className="text-xs text-stone-400 mt-1 font-medium">Total registrados</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-3xl border border-stone-200 p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
-              <UserCheck className="w-7 h-7 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold text-stone-900 leading-none">{u.usuariosActivos}</p>
-              <p className="text-xs text-stone-400 mt-1 font-medium">Cuentas activas</p>
-            </div>
-          </div>
-          <div className="bg-white rounded-3xl border border-stone-200 p-5 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
-            <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center shrink-0">
-              <Shield className="w-7 h-7 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold text-stone-900 leading-none">{u.totalAdmins}</p>
-              <p className="text-xs text-stone-400 mt-1 font-medium">Administradores</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Filtros */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
-          <div className="flex-1 flex items-center bg-white border border-stone-200 rounded-2xl p-1 gap-2 w-full shadow-sm focus-within:border-amber-700 focus-within:ring-2 focus-within:ring-amber-700/15 transition-all">
-            <div className="flex-1 flex items-center px-3 py-2">
-              <Search className="w-4 h-4 text-stone-300 shrink-0 mr-2" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, correo o empleado..."
-                value={u.busqueda}
-                onChange={(e) => u.setBusqueda(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-stone-700 placeholder:text-stone-300 outline-none w-full"
-              />
-              {u.busqueda && (
-                <button onClick={() => u.setBusqueda("")} className="text-stone-300 hover:text-stone-500 transition-colors ml-2">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+        {/* ── Filtros ── */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {/* Búsqueda */}
+          <div className="flex-1 flex items-center gap-2 bg-white border border-[#EDE8E1] rounded-lg px-3 py-2 focus-within:border-[#C17B2A] focus-within:ring-2 focus-within:ring-[#C17B2A]/15 transition-all w-full">
+            <Search className="w-3.5 h-3.5 text-[#B5A99E] shrink-0" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre o correo electrónico..."
+              value={u.busqueda}
+              onChange={(e) => u.setBusqueda(e.target.value)}
+              className="flex-1 bg-transparent text-[12.5px] text-[#1C0F05] placeholder:text-[#C0B4AA] outline-none"
+            />
+            {u.busqueda && (
+              <button onClick={() => u.setBusqueda("")} className="text-[#B5A99E] hover:text-[#5A4A3C] transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <div className="flex bg-stone-100 rounded-xl p-1 gap-1 shrink-0">
+          {/* Tabs activos/inactivos */}
+          <div className="flex bg-[#EDE8E1] rounded-lg p-1 gap-1 shrink-0">
             {(["activos", "inactivos"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => u.setFiltroEstado(tab)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                  u.filtroEstado === tab ? "bg-white text-stone-800 shadow-sm" : "text-stone-400 hover:text-stone-600"
+                className={`px-4 py-1.5 rounded-md text-[11.5px] font-semibold transition-all ${
+                  u.filtroEstado === tab
+                    ? "bg-white text-[#1C0F05] shadow-sm"
+                    : "text-[#8B7D72] hover:text-[#4A3728]"
                 }`}
               >
                 {tab === "activos" ? "Activos" : "Inactivos"}
@@ -195,74 +196,83 @@ export const UsuariosView = () => {
           </div>
         </div>
 
-        {/* Tabla */}
-        <div className="bg-white rounded-2xl border border-stone-200 overflow-hidden shadow-sm">
-          <table className="w-full text-sm">
+        {/* ── Tabla ── */}
+        <div className="bg-white rounded-xl border border-[#EDE8E1] overflow-hidden">
+          <div className="max-h-[300px] overflow-y-auto">
+            <table className="w-full text-[12.5px]">
             <thead>
-              <tr className="border-b border-stone-100 bg-stone-50/70">
-                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-stone-400">Usuario</th>
-                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-stone-400">Rol</th>
-                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-stone-400">Empleado</th>
-                <th className="px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-stone-400">Estado</th>
-                <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-stone-400">Acciones</th>
+              <tr className="bg-[#FDFAF7] border-b border-[#EDE8E1]">
+                <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">
+                  Usuario
+                </th>
+                <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">
+                  Rol
+                </th>
+                <th className="px-5 py-3 text-center text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">
+                  Estado
+                </th>
+                <th className="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.8px] text-[#A8978B]">
+                  Acciones
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-50">
+            <tbody className="divide-y divide-[#F5F0EB]">
               {u.cargando ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td className="px-5 py-4"><div className="h-4 bg-stone-100 rounded w-3/4" /></td>
-                    <td className="px-5 py-4"><div className="h-6 bg-stone-100 rounded-full w-24" /></td>
-                    <td className="px-5 py-4"><div className="h-4 bg-stone-100 rounded w-28" /></td>
-                    <td className="px-5 py-4"><div className="h-6 bg-stone-100 rounded-full w-16 mx-auto" /></td>
-                    <td className="px-5 py-4"><div className="h-8 bg-stone-100 rounded w-16 ml-auto" /></td>
+                    <td className="px-5 py-3.5">
+                      <div className="h-3.5 bg-[#F0EBE4] rounded w-3/4 mb-1.5" />
+                      <div className="h-3 bg-[#F0EBE4] rounded w-1/2" />
+                    </td>
+                    <td className="px-5 py-3.5"><div className="h-5 bg-[#F0EBE4] rounded-full w-20" /></td>
+                    <td className="px-5 py-3.5"><div className="h-5 bg-[#F0EBE4] rounded-full w-14 mx-auto" /></td>
+                    <td className="px-5 py-3.5"><div className="h-7 bg-[#F0EBE4] rounded w-14 ml-auto" /></td>
                   </tr>
                 ))
               ) : u.usuariosPaginados.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-stone-400">
-                    {u.busqueda ? "Sin resultados." : `No hay usuarios ${u.filtroEstado}.`}
+                  <td colSpan={4} className="px-5 py-12 text-center text-[#9A8E82] text-sm">
+                    {u.busqueda
+                      ? `Sin resultados para "${u.busqueda}".`
+                      : `No hay usuarios ${u.filtroEstado}.`}
                   </td>
                 </tr>
               ) : (
                 u.usuariosPaginados.map((usuario) => (
-                  <tr key={usuario.id} className="group hover:bg-amber-50/40 transition-colors">
-                    <td className="px-5 py-3.5">
-                      <p className="font-semibold text-stone-800">{usuario.name}</p>
-                      <p className="text-[11px] text-stone-400">{usuario.email}</p>
+                  <tr key={usuario.id} className="group hover:bg-[#FDFAF7] transition-colors">
+                    <td className="px-5 py-3">
+                      <p className="font-semibold text-[#1C0F05]">{usuario.name}</p>
+                      <p className="text-[11px] text-[#9A8E82] mt-0.5">{usuario.email}</p>
                     </td>
-                    <td className="px-5 py-3.5">{getRoleBadge(usuario.role)}</td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-1.5 text-xs text-stone-600">
-                        <Briefcase className="w-3.5 h-3.5 text-stone-400" />
-                        {usuario.empleado_nombre || "Sin vínculo"}
-                      </div>
+                    <td className="px-5 py-3">
+                      <RoleBadge role={usuario.role} />
                     </td>
-                    <td className="px-5 py-3.5 text-center">
+                    <td className="px-5 py-3 text-center">
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10.5px] font-bold ${
                           usuario.is_active
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-red-50 text-red-700 border border-red-200"
+                            ? "bg-[#EDFBF3] text-[#0D6E3F] border border-[#9FE1CB]"
+                            : "bg-[#FCEBEB] text-[#8B2020] border border-[#F7C1C1]"
                         }`}
                       >
                         {usuario.is_active ? "Activo" : "Suspendido"}
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-3">
                       <div className="flex items-center justify-end gap-1.5">
                         {usuario.is_active ? (
                           <>
                             <button
                               onClick={() => u.abrirModalEditar(usuario)}
-                              className="p-2 rounded-lg text-stone-400 hover:text-amber-700 hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-all"
+                              className="w-7 h-7 rounded-md flex items-center justify-center text-[#9A8E82] border border-transparent hover:text-[#1C0F05] hover:bg-[#F7F5F2] hover:border-[#EDE8E1] transition-all"
+                              title="Editar"
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => u.handleDesactivar(usuario.id, usuario.name)}
-                              className="p-2 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all"
-                              title="Suspender"
+                              className="w-7 h-7 rounded-md flex items-center justify-center text-[#9A8E82] border border-transparent hover:text-red-600 hover:bg-[#FCEBEB] hover:border-[#F7C1C1] transition-all"
+                              title="Suspender acceso"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -270,9 +280,10 @@ export const UsuariosView = () => {
                         ) : (
                           <button
                             onClick={() => u.handleReactivar(usuario.id, usuario.name)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold text-[#8B5A1A] bg-[#FDF3E7] border border-[#F0D9B5] rounded-lg hover:bg-[#F5E4C6] transition-colors"
                           >
-                            <RefreshCw className="w-3 h-3" /> Reactivar
+                            <RefreshCw className="w-3 h-3" />
+                            Reactivar
                           </button>
                         )}
                       </div>
@@ -282,162 +293,178 @@ export const UsuariosView = () => {
               )}
             </tbody>
           </table>
-          <div className="px-5 py-3 border-t border-stone-100 bg-stone-50/30 flex justify-end">
+        </div>
+          
+
+          {/* Footer de tabla */}
+          <div className="px-5 py-2.5 bg-[#FDFAF7] border-t border-[#EDE8E1] flex items-center justify-between">
+            <span className="text-[11px] text-[#9A8E82]">
+              {u.usuariosFiltrados?.length ?? 0} usuario
+              {(u.usuariosFiltrados?.length ?? 0) !== 1 ? "s" : ""}
+            </span>
             <Paginador />
           </div>
         </div>
+      </div>
 
-        {/* Modal */}
-        {u.isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-            <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm" onClick={u.cerrarModal} />
-            <div className="relative bg-white w-full max-w-xl mx-0 sm:mx-4 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh] border border-stone-200/60">
-              <div className="sm:hidden w-10 h-1 bg-stone-200 rounded-full mx-auto mt-3 mb-1 shrink-0" />
+      {/* ════════════════════════════════════════════════════════════════════
+          MODAL
+      ════════════════════════════════════════════════════════════════════ */}
+      {u.isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+          {/* Fondo */}
+          <div
+            className="absolute inset-0 bg-[#1C0F05]/55 backdrop-blur-sm"
+            onClick={u.cerrarModal}
+          />
 
-              <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-stone-100">
-                <div>
-                  <h2 className="text-lg font-extrabold text-stone-900">
-                    {u.usuarioAEditar ? "Editar usuario" : "Nuevo usuario"}
-                  </h2>
-                  <p className="text-xs text-stone-400 mt-0.5">
-                    {u.usuarioAEditar
-                      ? "Actualiza los datos de acceso."
-                      : "Crea una nueva cuenta para el sistema."}
-                  </p>
-                </div>
-                <button onClick={u.cerrarModal} className="w-8 h-8 rounded-xl flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
+          {/* Panel */}
+          <div className="relative bg-white w-full max-w-[480px] mx-0 sm:mx-4 rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[88vh] border border-[#EDE8E1]">
+            {/* Drag handle móvil */}
+            <div className="sm:hidden w-9 h-1 bg-[#DDD5CB] rounded-full mx-auto mt-3 mb-1 shrink-0" />
+
+            {/* Header del modal */}
+            <div className="shrink-0 flex items-start justify-between px-5 py-4 border-b border-[#F0EBE4]">
+              <div>
+                <h2 className="text-[15px] font-black text-[#1C0F05]">
+                  {u.usuarioAEditar ? "Editar usuario" : "Nuevo usuario"}
+                </h2>
+                <p className="text-[11px] text-[#9A8E82] mt-0.5">
+                  {u.usuarioAEditar
+                    ? "Actualiza los datos de acceso."
+                    : "Crea una nueva cuenta para el panel de gestión."}
+                </p>
               </div>
+              <button
+                onClick={u.cerrarModal}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#7A6E65] hover:text-[#1C0F05] hover:bg-[#F7F5F2] transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
-              <form id="usuarioForm" onSubmit={u.handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-                {/* Vinculación con empleado */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Briefcase className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Vinculación</h3>
-                  </div>
+            {/* Cuerpo del formulario */}
+            <form
+              id="usuarioForm"
+              onSubmit={u.handleSubmit}
+              className="flex-1 overflow-y-auto px-5 py-5 space-y-5"
+            >
+              {/* Sección: Credenciales */}
+              <section>
+                <div className="flex items-center gap-2 mb-3.5 pb-2.5 border-b border-[#F0EBE4]">
+                  <Users className="w-3.5 h-3.5 text-[#C17B2A]" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[1px] text-[#9A8E82]">
+                    Datos de la cuenta
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <Label>Empleado (opcional)</Label>
-                    <select
-                      value={u.formData.empleado_id}
-                      onChange={(e) => u.handleChange("empleado_id", e.target.value)}
-                      className={inputClass + " cursor-pointer"}
-                    >
-                      <option value="">— Cuenta independiente —</option>
-                      {u.empleadosLista.map((emp) => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.nombre_completo} - {emp.cargo}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </section>
-
-                {/* Datos de la cuenta */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Users className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Credenciales</h3>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label req>Nombre completo</Label>
-                      <input
-                        type="text"
-                        value={u.formData.name}
-                        onChange={(e) => u.handleChange("name", e.target.value)}
-                        className={`${inputClass} ${u.errores.name ? errorInputClass : ""}`}
-                      />
-                      {u.errores.name && (
-                        <p className="text-red-500 text-[11px] mt-1 font-medium">{u.errores.name}</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label req>Correo electrónico</Label>
-                      <input
-                        type="email"
-                        value={u.formData.email}
-                        onChange={(e) => u.handleChange("email", e.target.value)}
-                        className={`${inputClass} ${u.errores.email ? errorInputClass : ""}`}
-                      />
-                      {u.errores.email && (
-                        <p className="text-red-500 text-[11px] mt-1 font-medium">{u.errores.email}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <Label req={!u.usuarioAEditar} hint={u.usuarioAEditar ? "Dejar vacío para no cambiar" : "Mínimo 8 caracteres"}>
-                      Contraseña
-                    </Label>
-                    <div className="relative">
-                      <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                      <input
-                        type="password"
-                        value={u.formData.password}
-                        onChange={(e) => u.handleChange("password", e.target.value)}
-                        placeholder={u.usuarioAEditar ? "••••••••" : "Contraseña segura"}
-                        className={`pl-9 ${inputClass} ${u.errores.password ? errorInputClass : ""}`}
-                      />
-                    </div>
-                    {u.errores.password && (
-                      <p className="text-red-500 text-[11px] mt-1 font-medium">{u.errores.password}</p>
+                    <FieldLabel required>Nombre completo</FieldLabel>
+                    <input
+                      type="text"
+                      value={u.formData.name}
+                      onChange={(e) => u.handleChange("name", e.target.value)}
+                      className={`${inputBase} ${u.errores.name ? inputError : ""}`}
+                      placeholder="Ej. Carlos Mendoza"
+                    />
+                    {u.errores.name && (
+                      <p className="text-red-500 text-[10.5px] mt-1 font-medium">{u.errores.name}</p>
                     )}
                   </div>
-                </section>
-
-                {/* Rol */}
-                <section>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Shield className="w-5 h-5 text-amber-700" />
-                    <h3 className="text-sm font-bold text-stone-700 uppercase tracking-wide">Rol</h3>
-                  </div>
                   <div>
-                    <Label req>Rol del sistema</Label>
-                    <select
-                      value={u.formData.role}
-                      onChange={(e) => u.handleChange("role", e.target.value)}
-                      className={inputClass + " cursor-pointer"}
-                    >
-                      <option value="admin">Administrador (Acceso Total)</option>
-                      <option value="vendedor">Vendedor (Punto de Venta / Clientes)</option>
-                      <option value="logistica">Logística (Inventarios / Proveedores)</option>
-                      <option value="repartidor">Repartidor (Entregas / Trazabilidad)</option>
-                    </select>
+                    <FieldLabel required>Correo electrónico</FieldLabel>
+                    <input
+                      type="email"
+                      value={u.formData.email}
+                      onChange={(e) => u.handleChange("email", e.target.value)}
+                      className={`${inputBase} ${u.errores.email ? inputError : ""}`}
+                      placeholder="usuario@sanfelipe.pe"
+                    />
+                    {u.errores.email && (
+                      <p className="text-red-500 text-[10.5px] mt-1 font-medium">{u.errores.email}</p>
+                    )}
                   </div>
-                </section>
-              </form>
+                </div>
 
-              <div className="shrink-0 flex items-center gap-3 px-6 py-4 border-t border-stone-100 bg-white rounded-b-3xl">
-                <button
-                  type="button"
-                  onClick={u.cerrarModal}
-                  className="flex-1 py-3 rounded-2xl text-sm font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  form="usuarioForm"
-                  type="submit"
-                  disabled={u.guardando}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold text-white bg-amber-700 hover:bg-amber-800 disabled:opacity-60 active:scale-[0.98] transition-all shadow-md shadow-amber-800/20"
-                >
-                  {u.guardando ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando…
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      {u.usuarioAEditar ? "Actualizar usuario" : "Crear cuenta"}
-                    </>
+                <div className="mt-4">
+                  <FieldLabel
+                    required={!u.usuarioAEditar}
+                    hint={u.usuarioAEditar ? "Dejar vacío para no cambiar" : "Mínimo 8 caracteres"}
+                  >
+                    Contraseña
+                  </FieldLabel>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B5A99E]" />
+                    <input
+                      type="password"
+                      value={u.formData.password}
+                      onChange={(e) => u.handleChange("password", e.target.value)}
+                      placeholder={u.usuarioAEditar ? "••••••••" : "Contraseña de acceso"}
+                      className={`pl-9 ${inputBase} ${u.errores.password ? inputError : ""}`}
+                    />
+                  </div>
+                  {u.errores.password && (
+                    <p className="text-red-500 text-[10.5px] mt-1 font-medium">{u.errores.password}</p>
                   )}
-                </button>
-              </div>
+                </div>
+              </section>
+
+              {/* Sección: Permisos */}
+              <section>
+                <div className="flex items-center gap-2 mb-3.5 pb-2.5 border-b border-[#F0EBE4]">
+                  <Shield className="w-3.5 h-3.5 text-[#C17B2A]" />
+                  <h3 className="text-[10px] font-black uppercase tracking-[1px] text-[#9A8E82]">
+                    Permisos y rol
+                  </h3>
+                </div>
+                <div>
+                  <FieldLabel required>Rol del sistema</FieldLabel>
+                  <select
+                    value={u.formData.role}
+                    onChange={(e) => u.handleChange("role", e.target.value)}
+                    className={`${inputBase} cursor-pointer`}
+                  >
+                    <option value="admin">Administrador — Acceso total</option>
+                    <option value="vendedor">Vendedor — Punto de venta / Clientes</option>
+                    <option value="logistica">Logística — Inventarios / Proveedores</option>
+                    <option value="repartidor">Repartidor — Entregas / Trazabilidad</option>
+                  </select>
+                </div>
+              </section>
+            </form>
+
+            {/* Footer del modal */}
+            <div className="shrink-0 flex items-center gap-2.5 px-5 py-4 border-t border-[#F0EBE4] bg-white rounded-b-2xl">
+              <button
+                type="button"
+                onClick={u.cerrarModal}
+                className="flex-1 py-2.5 rounded-lg text-[12.5px] font-semibold text-[#5A4A3C] bg-[#F7F5F2] border border-[#EDE8E1] hover:bg-[#EDE8E1] transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                form="usuarioForm"
+                type="submit"
+                disabled={u.guardando}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12.5px] font-semibold text-white bg-[#C17B2A] hover:bg-[#A86522] disabled:opacity-60 active:scale-[0.98] transition-all shadow-sm shadow-[#C17B2A]/25"
+              >
+                {u.guardando ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Guardando…
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    {u.usuarioAEditar ? "Actualizar usuario" : "Crear cuenta"}
+                  </>
+                )}
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

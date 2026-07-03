@@ -26,6 +26,8 @@ class Customer extends Model
         'distrito',
         'provincia',
         'departamento',
+        'latitud',
+        'longitud',
         'estado',
     ];
 
