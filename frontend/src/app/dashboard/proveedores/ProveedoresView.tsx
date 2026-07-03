@@ -4,7 +4,7 @@ import { useProveedores } from "./useProveedores";
 import {
   Plus, Edit, Trash2, Search, X, Save, Users, UserCheck, Phone,
   MapPin, RefreshCw, ChevronLeft, ChevronRight,
-  CreditCard, Building2
+  CreditCard, Building2, SearchCode
 } from "lucide-react";
 
 // ─── Sub-componentes de UI ────────────────────────────────────────────────────
@@ -359,14 +359,31 @@ export const ProveedoresView = () => {
                     </select>
                   </div>
                   <div>
-                    <FieldLabel>Número</FieldLabel>
-                    <input
-                      type="text"
-                      value={pv.formData.numero_documento}
-                      onChange={pv.handleNumeroDocumentoChange}
-                      placeholder="Ingrese número"
-                      className={`${inputBase} ${pv.errores.numero_documento ? inputError : ""}`}
-                    />
+                    <FieldLabel hint="Buscar Reniec/Sunat">Número</FieldLabel>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={pv.formData.numero_documento}
+                        onChange={pv.handleNumeroDocumentoChange}
+                        placeholder="Ingrese número"
+                        className={`${inputBase} ${pv.errores.numero_documento ? inputError : ""}`}
+                      />
+                      {(pv.formData.tipo_documento === "DNI" || pv.formData.tipo_documento === "RUC") && (
+                        <button
+                          type="button"
+                          onClick={pv.buscarDocumento}
+                          disabled={pv.consultandoDoc || !pv.formData.numero_documento}
+                          className="shrink-0 w-10 h-[38px] bg-[#F7F5F2] border border-[#DDD5CB] text-[#C17B2A] rounded-lg flex items-center justify-center hover:bg-[#EDE8E1] hover:text-[#A86522] transition-colors disabled:opacity-50"
+                          title="Consultar Documento"
+                        >
+                          {pv.consultandoDoc ? (
+                            <span className="w-4 h-4 border-2 border-[#C17B2A]/30 border-t-[#C17B2A] rounded-full animate-spin" />
+                          ) : (
+                            <SearchCode className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                     {pv.errores.numero_documento && (
                       <p className="text-red-500 text-[10.5px] mt-1 font-medium">{pv.errores.numero_documento}</p>
                     )}

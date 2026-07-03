@@ -24,6 +24,7 @@ export const useProveedores = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [consultandoDoc, setConsultandoDoc] = useState(false);
   const [proveedorAEditar, setProveedorAEditar] = useState<Proveedor | null>(null);
 
   const [formData, setFormData] = useState({
@@ -124,6 +125,48 @@ export const useProveedores = () => {
       setFormData({ ...formData, numero_documento: value.toUpperCase().slice(0, 20) });
     }
     setErrores(prev => ({ ...prev, numero_documento: "" }));
+  };
+
+  // --- CONSULTAR DOCUMENTO (API Externa) ---
+  const buscarDocumento = async () => {
+    if (!formData.tipo_documento || !formData.numero_documento) {
+      toast.warning("Seleccione el tipo y escriba el número de documento");
+      return;
+    }
+    
+    const tipo = formData.tipo_documento.toLowerCase();
+    if (tipo !== "dni" && tipo !== "ruc") return;
+
+    setConsultandoDoc(true);
+    try {
+      // Reutilizamos el endpoint de clientes
+      const response = await fetch(`/api/customers/verify-document?tipo=${tipo}&numero=${formData.numero_documento}`, {
+        headers: { Accept: "application/json" }
+      });
+      
+      const res = await response.json();
+      
+      if (response.ok && res.success && res.data) {
+        // Si es DNI unimos nombre y apellido, si es RUC usamos la razón social
+        const nombreCompleto = res.data.apellido ? `${res.data.nombre} ${res.data.apellido}`.trim() : res.data.nombre;
+
+        setFormData(prev => ({
+          ...prev,
+          razon_social: res.data.razon_social || nombreCompleto || prev.razon_social,
+          direccion: res.data.direccion || prev.direccion,
+          distrito: res.data.distrito || prev.distrito,
+          provincia: res.data.provincia || prev.provincia,
+          departamento: res.data.departamento || prev.departamento,
+        }));
+        toast.success("Datos del proveedor obtenidos correctamente");
+      } else {
+        toast.error(res.message || "No se encontraron datos");
+      }
+    } catch (error) {
+      toast.error("Error de red al consultar el documento.");
+    } finally {
+      setConsultandoDoc(false);
+    }
   };
 
   // --- GUARDAR O ACTUALIZAR ---
@@ -232,8 +275,8 @@ export const useProveedores = () => {
 
   return {
     proveedoresPaginados, proveedoresFiltrados, cargando, filtroEstado, setFiltroEstado,
-    busqueda, setBusqueda, isModalOpen, guardando, proveedorAEditar, formData,
-    handleChange, handleTelefonoChange, handleNumeroDocumentoChange, handleSubmit,
+    busqueda, setBusqueda, isModalOpen, guardando, consultandoDoc, proveedorAEditar, formData,
+    handleChange, handleTelefonoChange, handleNumeroDocumentoChange, buscarDocumento, handleSubmit,
     handleDesactivar, handleReactivar, abrirModalCrear, abrirModalEditar, cerrarModal,
     errores, totalProveedores, proveedoresActivos, proveedoresConTelefono,
     pagina, setPagina, totalPaginas, paginaAjustada,
