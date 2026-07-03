@@ -164,21 +164,25 @@ class SaleController extends Controller
             // Petición HTTP externa (Toma de 1.5 a 3 segundos en promedio)
             $resultadoSunat = $sunatService->enviar($invoice);
 
+            // Al usar el array mapeado por tu servicio, la lógica se simplifica drásticamente
             if ($resultadoSunat['invoice_accepted']) {
+
                 $invoice->update([
-                    'estado_sunat'      => 'ACEPTADO',
-                    'sunat_description' => $resultadoSunat['description'],
-                    'hash'              => $resultadoSunat['hash'],
-                    'cdr_path'          => $resultadoSunat['cdr_zip'],
-                    'xml_path'          => $resultadoSunat['xml'],
+                    'estado_sunat'                => 'ACEPTADO',
+                    'descripcion_respuesta_sunat' => $resultadoSunat['description'],
+                    'hash_cpe'                    => $resultadoSunat['hash'],
+                   // 'ruta_cdr'                    => $resultadoSunat['cdr_zip'], // Ahora sí lee perfectamente de 'cdr_zip'
+                   // 'ruta_xml'                    => $resultadoSunat['xml'],
                 ]);
             } else {
+
                 $invoice->update([
-                    'estado_sunat'      => 'RECHAZADO',
-                    'sunat_description' => $resultadoSunat['description']
+                    'estado_sunat'                => 'RECHAZADO',
+                    'descripcion_respuesta_sunat' => $resultadoSunat['description']
                 ]);
             }
 
+            // =========================================================================
             if (!$sale) {
                 throw new \Exception("La venta no pudo ser inicializada correctamente.");
             }
