@@ -27,7 +27,7 @@ class ShipmentStoreRequest extends FormRequest
             'sale_id' => ['required', 'integer', 'exists:sales,id'],
             'carrier_id' => ['required', 'integer', 'exists:carriers,id'],
 
-            'tipo_envio' => ['required', 'in:bus,shalom,olva'],
+            'tipo_envio' => ['required', 'in:bus,shalom,olva,motorizado'],
             'numero_seguimiento' => ['nullable', 'string', 'max:100'],
             'repartidor_nombre' => ['nullable', 'string', 'max:255'],
             'direccion_destino' => ['required', 'string'],

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('sale_id');
             $table->string('carrier_id');
-            $table->enum('tipo_envio', ["bus","shalom","olva"]);
+            $table->enum('tipo_envio', ["bus","shalom","olva","motorizado"])->default("bus");
             $table->string('numero_seguimiento', 100)->nullable();
             $table->string('repartidor_nombre', 255)->nullable();
             $table->text('direccion_destino');

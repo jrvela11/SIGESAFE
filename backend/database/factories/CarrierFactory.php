@@ -2,20 +2,20 @@
 
 namespace Database\Factories;
 
+use App\Models\Carrier;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class CarrierFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     */
+    protected $model = Carrier::class;
+
     public function definition(): array
     {
         return [
-            'nombre' => fake()->regexify('[A-Za-z0-9]{255}'),
-            'ruc_dni' => fake()->regexify('[A-Za-z0-9]{20}'),
-            'telefono' => fake()->regexify('[A-Za-z0-9]{20}'),
-            'estado' => fake()->boolean(),
+            'nombre' => fake()->company() . ' Transportes',
+            'ruc_dni' => '20' . fake()->numerify('#########'), 
+            'telefono' => fake()->phoneNumber(),
+            'estado' => fake()->boolean(90), 
         ];
     }
 }
