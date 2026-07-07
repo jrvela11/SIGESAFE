@@ -12,11 +12,15 @@ import { ProveedoresView } from "./app/dashboard/proveedores/ProveedoresView";
 import { AjustesView } from "./app/dashboard/configuracion/AjustesView";
 import { DashboardMapaView } from "./app/dashboard/dashboard/DashboardMapaView";
 import { EnviosView } from "./app/dashboard/envios/EnviosView";
-import { SeguimientosView } from "./app/dashboard/envios/SeguimientosView";
 import { ComprasView } from "./app/dashboard/compras/ComprasView";
 import { PuntoCompraView } from "./app/dashboard/punto-compra/PuntoCompraView";
 import { KardexView } from "./app/kardex/KardexView";
+
 import { ReportesView } from "./app/dashboard/reportes/ReportesView";
+import { TransportistasView } from "./app/dashboard/transportista/TransportistasView";
+import { MisEntregasView } from "./app/dashboard/entregas/MisEntregasView";
+import { RastreoView } from "./app/dashboard/rastreo/RastreoView";
+
 
 export default function App() {
   return (
@@ -27,7 +31,9 @@ export default function App() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardView />} />
         <Route path="/envios" element={<EnviosView />} />
-        <Route path="/seguimientos" element={<SeguimientosView />} />
+        <Route path="/rastreo" element={<RastreoView />} />
+        <Route path="/entregas" element={<MisEntregasView />} />
+        <Route path="/transportistas" element={<TransportistasView />} />
         <Route path="/clientes" element={<ClientesView />} />
         <Route path="/categorias" element={<CategoriasView />} />
         <Route path="/usuarios" element={<UsuariosView />} />

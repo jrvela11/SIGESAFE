@@ -16,7 +16,9 @@ class DatabaseSeeder extends Seeder
             SaleSeeder::class,
             SaleDetailSeeder::class,
             SupplierSeeder::class,
-            PurchaseSeeder::class
+            PurchaseSeeder::class,
+            CarrierSeeder::class,
+            ShipmentSeeder::class
         ]);
     }
 }

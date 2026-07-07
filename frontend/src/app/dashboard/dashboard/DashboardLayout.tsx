@@ -23,6 +23,10 @@ const MENU_GROUPS = [
       { name: "Punto de Compra", icon: Scale, path: "/punto-compra" },
       { name: "Compras", icon: Truck, path: "/compras" },
       { name: "Kardex", icon: Layers, path: "/kardex" },
+      { name: "Envios", icon: Route, path: "/envios" },
+      { name: "Rastreo", icon: Route, path: "/rastreo" },
+      { name: "Entregas", icon: Package, path: "/entregas" },
+      { name: "Transportistas", icon: Truck, path: "/transportistas" },
     ],
   },
   {
