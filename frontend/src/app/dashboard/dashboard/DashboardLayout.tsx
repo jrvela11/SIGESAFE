@@ -1,55 +1,62 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../../../context/AuthContext";
 import {
   LayoutDashboard, Store, ShoppingCart, Scale, Truck,
   Package, Tags, Route, Users, Shield,
   History, Settings, LogOut, Coffee, Menu, X, Search,
-  ChevronDown, Layers, Map
+  ChevronDown, Layers, Map, Navigation 
 } from "lucide-react";
 
+// ─── CONFIGURACIÓN DEL MENÚ CON ROLES ───
 const MENU_GROUPS = [
   {
     title: "Principal",
     items: [
-      { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-      { name: "Mapa", icon: Map, path: "/mapa" },
+      { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard", roles: ["admin", "vendedor", "comprador"] },
+      { name: "Mapa", icon: Map, path: "/mapa", roles: ["admin", "vendedor"] },
     ],
   },
   {
     title: "Operaciones",
     items: [
-      { name: "Punto de Venta", icon: Store, path: "/punto-venta" },
-      { name: "Ventas", icon: ShoppingCart, path: "/ventas" },
-      { name: "Punto de Compra", icon: Scale, path: "/punto-compra" },
-      { name: "Compras", icon: Truck, path: "/compras" },
-      { name: "Kardex", icon: Layers, path: "/kardex" },
-      { name: "Envios", icon: Route, path: "/envios" },
-      { name: "Rastreo", icon: Route, path: "/rastreo" },
-      { name: "Entregas", icon: Package, path: "/entregas" },
-      { name: "Transportistas", icon: Truck, path: "/transportistas" },
+      { name: "Punto de Venta", icon: Store, path: "/punto-venta", roles: ["admin", "vendedor"] },
+      { name: "Ventas", icon: ShoppingCart, path: "/ventas", roles: ["admin", "vendedor"] },
+      { name: "Punto de Compra", icon: Scale, path: "/punto-compra", roles: ["admin", "comprador"] },
+      { name: "Compras", icon: Truck, path: "/compras", roles: ["admin", "comprador"] },
+      { name: "Kardex", icon: Layers, path: "/kardex", roles: ["admin"] },
+    ],
+  },
+  {
+    title: "Trazabilidad", 
+    items: [
+      { name: "Envios", icon: Package, path: "/envios", roles: ["admin", "vendedor"] },
+      { name: "Rastreo", icon: Navigation, path: "/rastreo", roles: ["admin", "vendedor"] },
+      { name: "Entregas", icon: Route, path: "/entregas", roles: ["admin", "motorizado"] },
+      { name: "Transportistas", icon: Truck, path: "/transportistas", roles: ["admin", "vendedor"] },
     ],
   },
   {
     title: "Catálogo",
     items: [
-      { name: "Productos", icon: Package, path: "/productos" },
-      { name: "Categorías", icon: Tags, path: "/categorias" },
+      { name: "Productos", icon: Package, path: "/productos", roles: ["admin", "vendedor", "comprador"] },
+      { name: "Categorías", icon: Tags, path: "/categorias", roles: ["admin", "vendedor", "comprador"] },
     ],
   },
   {
     title: "Personas",
     items: [
-      { name: "Clientes", icon: Users, path: "/clientes" },
-      { name: "Proveedores", icon: Truck, path: "/proveedores" },
-      { name: "Usuarios", icon: Shield, path: "/usuarios" },
+      { name: "Clientes", icon: Users, path: "/clientes", roles: ["admin", "vendedor"] },
+      { name: "Proveedores", icon: Truck, path: "/proveedores", roles: ["admin", "comprador"] },
+      { name: "Usuarios", icon: Shield, path: "/usuarios", roles: ["admin"] },
     ],
   },
   {
     title: "Sistema",
     items: [
-      { name: "Reportes", icon: Search, path: "/reportes" },
-      { name: "Auditoría", icon: History, path: "/auditoria" },
-      { name: "Ajustes", icon: Settings, path: "/ajustes" },
+      { name: "Reportes", icon: Search, path: "/reportes", roles: ["admin"] },
+      { name: "Auditoría", icon: History, path: "/auditoria", roles: ["admin"] },
+      { name: "Ajustes", icon: Settings, path: "/ajustes", roles: ["admin"] },
     ],
   },
 ];
@@ -61,20 +68,30 @@ interface LayoutProps {
 export const DashboardLayout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
+  // Obtenemos al usuario y la función de cierre de sesión
+  const { user, logout } = useAuth();
 
-  // Inicializar grupos expandidos (abrir el que contiene la ruta actual)
+  // Filtramos los grupos del menú según el rol del usuario conectado
+  const menusPermitidos = MENU_GROUPS.map(group => ({
+    ...group,
+    items: group.items.filter(item => item.roles.includes(user?.role || ""))
+  })).filter(group => group.items.length > 0); 
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
-      MENU_GROUPS.map((g) => [g.title, g.items.some((i) => location.pathname.includes(i.path))])
+      menusPermitidos.map((g) => [g.title, g.items.some((i) => location.pathname.includes(i.path))])
     )
   );
 
   const toggleGroup = (title: string) =>
     setExpanded((prev) => ({ ...prev, [title]: !prev[title] }));
 
-  // Breadcrumb dinámico
-  const activeGroup = MENU_GROUPS.find((g) => g.items.some((i) => location.pathname.includes(i.path)));
+  const activeGroup = menusPermitidos.find((g) => g.items.some((i) => location.pathname.includes(i.path)));
   const activeItem = activeGroup?.items.find((i) => location.pathname.includes(i.path));
+
+  // Extraer inicial para el avatar
+  const inicialUsuario = user?.name ? user.name.charAt(0).toUpperCase() : "U";
 
   return (
     <div className="min-h-screen bg-[#F7F5F2] flex font-sans overflow-hidden">
@@ -102,9 +119,9 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
           <button className="md:hidden p-1.5 text-white/40" onClick={() => setIsSidebarOpen(false)}><X className="w-4 h-4" /></button>
         </div>
 
-        {/* Navegación */}
+        {/* Navegación Filtrada (Se quitó el perfil de usuario de aquí) */}
         <nav className="flex-1 py-3 px-2.5 flex flex-col gap-0.5 overflow-y-auto custom-scrollbar">
-          {MENU_GROUPS.map((group) => (
+          {menusPermitidos.map((group) => (
             <div key={group.title}>
               <button
                 onClick={() => toggleGroup(group.title)}
@@ -134,12 +151,36 @@ export const DashboardLayout = ({ children }: LayoutProps) => {
 
       {/* ÁREA PRINCIPAL */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-[56px] bg-white border-b border-[#EDE8E1] flex items-center justify-between px-6 shrink-0">
+        <header className="h-[56px] bg-white border-b border-[#EDE8E1] flex items-center justify-between px-6 shrink-0 shadow-sm shadow-[#1C0F05]/5">
           <div className="flex items-center gap-3">
-            <button className="md:hidden p-2 text-[#5A4A3C]" onClick={() => setIsSidebarOpen(true)}><Menu className="w-5 h-5" /></button>
-            <span className="font-bold text-[#1C0F05]">{activeItem?.name || "Dashboard"}</span>
+            <button className="md:hidden p-2 text-[#5A4A3C]" onClick={() => setIsSidebarOpen(true)}>
+              <Menu className="w-5 h-5" />
+            </button>
+            <span className="font-bold text-[#1C0F05] text-[15px]">{activeItem?.name || "Dashboard"}</span>
           </div>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#C17B2A] to-[#8B5010] text-white flex items-center justify-center text-[11px] font-black">A</div>
+          
+          {/* Opciones de la cabecera (Perfil y Logout) */}
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:block text-right">
+              <p className="text-[12.5px] font-bold text-[#1C0F05] leading-tight">{user?.name}</p>
+              <p className="text-[10.5px] font-medium text-[#8B7D72]">{user?.role.toUpperCase()}</p>
+            </div>
+            
+            <div className="w-8 h-8 rounded-full bg-[#FDF3E7] border border-[#F0D9B5] text-[#C17B2A] flex items-center justify-center text-[12px] font-black shadow-inner">
+              {inicialUsuario}
+            </div>
+
+            {/* Botón Salir */}
+            <div className="pl-3 border-l border-[#EDE8E1]">
+              <button 
+                onClick={logout}
+                title="Cerrar Sesión"
+                className="p-1.5 text-[#9A8E82] hover:text-[#8B2020] hover:bg-[#FCEBEB] rounded-lg transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-7">

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { DashboardLayout } from "../dashboard/dashboard/DashboardLayout";
+import { DashboardLayout } from "../dashboard/DashboardLayout";
 import { useKardex, type MovimientoKardex } from "./useKardex";
 import {
   Package, TrendingUp, TrendingDown, Layers,
