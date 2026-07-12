@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { toast } from "sonner"; // Usamos sonner para notificaciones
 
-// Interfaz exacta basada en tu UserResource de Laravel
 export interface Usuario {
   id: number;
   name: string;
@@ -19,61 +19,61 @@ export interface UsuarioFormData {
 }
 
 export const useUsuarios = () => {
-  // --- ESTADOS GLOBALES ---
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [guardando, setGuardando] = useState<boolean>(false);
 
-  // --- ESTADOS DEL MODAL Y FORMULARIO ---
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [usuarioAEditar, setUsuarioAEditar] = useState<Usuario | null>(null);
   const [errores, setErrores] = useState<Record<string, string>>({});
+  
   const [formData, setFormData] = useState<UsuarioFormData>({
     name: "",
     email: "",
     password: "",
-    role: "vendedor",
+    role: "vendedor", // Rol por defecto
     is_active: true,
   });
 
-  // --- ESTADOS DE FILTROS Y PAGINACIÓN ---
   const [busqueda, setBusqueda] = useState<string>("");
   const [filtroEstado, setFiltroEstado] = useState<"activos" | "inactivos">("activos");
   const [pagina, setPagina] = useState<number>(1);
   const elementosPorPagina = 8;
 
-  // --- CARGAR DATOS ---
-  useEffect(() => {
-    fetchUsuarios();
-  }, []);
+  // Helper para obtener el token actual
+  const getToken = () => localStorage.getItem("token");
 
+  // --- CARGAR DATOS ---
   const fetchUsuarios = async () => {
     setCargando(true);
     try {
       const response = await fetch("/api/users", {
-        headers: { Accept: "application/json" },
+        headers: { 
+          Accept: "application/json",
+          Authorization: `Bearer ${getToken()}` // <--- Token agregado
+        },
       });
       if (response.ok) {
         const json = await response.json();
-        setUsuarios(json.data); // UserCollection envuelve la respuesta en "data"
+        setUsuarios(json.data);
+      } else {
+        toast.error("Error al obtener los usuarios.");
       }
     } catch (error) {
-      console.error("Error al cargar usuarios:", error);
+      toast.error("Error de conexión al cargar usuarios.");
     } finally {
       setCargando(false);
     }
   };
 
-  // --- MANEJO DEL MODAL Y ACCIONES ---
+  useEffect(() => {
+    fetchUsuarios();
+  }, []);
+
+  // --- MANEJO DEL MODAL ---
   const abrirModalCrear = () => {
     setUsuarioAEditar(null);
-    setFormData({
-      name: "",
-      email: "",
-      password: "",
-      role: "vendedor",
-      is_active: true,
-    });
+    setFormData({ name: "", email: "", password: "", role: "vendedor", is_active: true });
     setErrores({});
     setIsModalOpen(true);
   };
@@ -83,7 +83,7 @@ export const useUsuarios = () => {
     setFormData({
       name: usuario.name,
       email: usuario.email,
-      password: "", // Vacío por seguridad, el backend lo maneja como nullable en updates
+      password: "", 
       role: usuario.role,
       is_active: usuario.is_active,
     });
@@ -96,17 +96,17 @@ export const useUsuarios = () => {
   const handleChange = (campo: keyof UsuarioFormData, valor: any) => {
     setFormData((prev) => ({ ...prev, [campo]: valor }));
     if (errores[campo]) {
-      setErrores((prev) => ({ ...prev, [campo]: "" })); // Limpia el error mientras escribe
+      setErrores((prev) => ({ ...prev, [campo]: "" }));
     }
   };
 
+  // --- GUARDAR O ACTUALIZAR ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGuardando(true);
     setErrores({});
 
     const payload = { ...formData };
-    // Si estamos editando y el password está vacío, no lo enviamos al servidor
     if (!payload.password && usuarioAEditar) {
       delete payload.password;
     }
@@ -120,13 +120,13 @@ export const useUsuarios = () => {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          Authorization: `Bearer ${getToken()}` // <--- Token agregado
         },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         if (response.status === 422) {
-          // Captura de errores de validación de Laravel (ej. email duplicado o formato inválido)
           const data = await response.json();
           const validacionErrores: Record<string, string> = {};
           if (data.errors) {
@@ -135,29 +135,31 @@ export const useUsuarios = () => {
             });
           }
           setErrores(validacionErrores);
+          toast.warning("Revisa los campos con errores.");
           return;
         }
         throw new Error("Error interno del servidor");
       }
 
+      toast.success(usuarioAEditar ? "Usuario actualizado" : "Usuario creado exitosamente");
       await fetchUsuarios();
       cerrarModal();
     } catch (error) {
-      console.error("Error al procesar el formulario:", error);
-      alert("Ocurrió un problema de red o sincronización con el servidor.");
+      toast.error("Ocurrió un problema de sincronización con el servidor.");
     } finally {
       setGuardando(false);
     }
   };
 
-  // --- LÓGICA DE ACTUALIZACIÓN DE ESTADO (SUSPENDER/REACTIVAR) ---
+// --- LÓGICA DE ACTUALIZACIÓN DE ESTADO ---
   const cambiarEstado = async (usuario: Usuario, nuevoEstado: boolean) => {
     try {
-      const payload = {
+      // Construimos el payload exacto que el backend necesita, sin incluir password
+      const payload = { 
         name: usuario.name,
         email: usuario.email,
         role: usuario.role,
-        is_active: nuevoEstado,
+        is_active: nuevoEstado 
       };
 
       const response = await fetch(`/api/users/${usuario.id}`, {
@@ -165,17 +167,19 @@ export const useUsuarios = () => {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          Authorization: `Bearer ${getToken()}`
         },
         body: JSON.stringify(payload),
       });
 
       if (response.ok) {
+        toast.success(`Acceso ${nuevoEstado ? 'reactivado' : 'suspendido'} correctamente.`);
         await fetchUsuarios();
       } else {
-        alert("No se pudo actualizar el estado del usuario.");
+        toast.error("No se pudo actualizar el estado.");
       }
     } catch (error) {
-      console.error(error);
+      toast.error("Error de red al actualizar estado.");
     }
   };
 
@@ -187,11 +191,14 @@ export const useUsuarios = () => {
   };
 
   const handleReactivar = (id: number, name: string) => {
-    const usuario = usuarios.find((u) => u.id === id);
-    if (usuario) cambiarEstado(usuario, true);
+    // Usamos la variable 'name' para agregar la misma confirmación de seguridad
+    if (window.confirm(`¿Estás seguro de reactivar el acceso de ${name}?`)) {
+      const usuario = usuarios.find((u) => u.id === id);
+      if (usuario) cambiarEstado(usuario, true);
+    }
   };
 
-  // --- FILTROS, BÚSQUEDA Y PAGINACIÓN ---
+  // --- FILTROS Y PAGINACIÓN ---
   const usuariosFiltrados = useMemo(() => {
     return usuarios.filter((u) => {
       const coincideEstado = filtroEstado === "activos" ? u.is_active : !u.is_active;
@@ -202,12 +209,10 @@ export const useUsuarios = () => {
     });
   }, [usuarios, busqueda, filtroEstado]);
 
-  // Indicadores (KPIs)
   const totalUsuarios = usuarios.length;
   const usuariosActivos = usuarios.filter((u) => u.is_active).length;
   const totalAdmins = usuarios.filter((u) => u.role === "admin" && u.is_active).length;
 
-  // Control estricto de páginas
   const totalPaginas = Math.ceil(usuariosFiltrados.length / elementosPorPagina) || 1;
   const paginaAjustada = Math.min(pagina, totalPaginas);
 
@@ -221,30 +226,9 @@ export const useUsuarios = () => {
   }, [paginaAjustada, pagina]);
 
   return {
-    cargando,
-    guardando,
-    usuariosFiltrados,
-    usuariosPaginados,
-    paginaAjustada,
-    totalPaginas,
-    setPagina,
-    busqueda,
-    setBusqueda,
-    filtroEstado,
-    setFiltroEstado,
-    totalUsuarios,
-    usuariosActivos,
-    totalAdmins,
-    isModalOpen,
-    abrirModalCrear,
-    abrirModalEditar,
-    cerrarModal,
-    usuarioAEditar,
-    formData,
-    errores,
-    handleChange,
-    handleSubmit,
-    handleDesactivar,
-    handleReactivar,
+    cargando, guardando, usuariosFiltrados, usuariosPaginados, paginaAjustada, totalPaginas, setPagina,
+    busqueda, setBusqueda, filtroEstado, setFiltroEstado, totalUsuarios, usuariosActivos, totalAdmins,
+    isModalOpen, abrirModalCrear, abrirModalEditar, cerrarModal, usuarioAEditar, formData, errores,
+    handleChange, handleSubmit, handleDesactivar, handleReactivar,
   };
 };

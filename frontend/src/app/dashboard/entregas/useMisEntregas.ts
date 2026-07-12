@@ -14,15 +14,25 @@ export const useMisEntregas = () => {
   const [entregas, setEntregas] = useState<EnvioMotorizado[]>([]);
   const [cargando, setCargando] = useState(true);
   const [procesandoId, setProcesandoId] = useState<number | null>(null);
+  
+  // Estado para controlar el modal de confirmación bonito
+  const [envioAConfirmar, setEnvioAConfirmar] = useState<EnvioMotorizado | null>(null);
 
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<string>("Todos");
+
+  const getToken = () => localStorage.getItem("token");
 
   // --- CARGAR DATOS ---
   const fetchMisEntregas = async () => {
     try {
       setCargando(true);
-      const response = await fetch("/api/shipments", { headers: { Accept: "application/json" } });
+      const response = await fetch("/api/shipments", { 
+        headers: { 
+          Accept: "application/json",
+          Authorization: `Bearer ${getToken()}`
+        } 
+      });
       
       if (response.ok) {
         const json = await response.json();
@@ -33,7 +43,7 @@ export const useMisEntregas = () => {
           e.estado && 
           e.estado_actual !== 'Entregado' &&
           e.estado_actual !== 'Anulado' &&
-          e.estado_actual !== 'Preparando' // <-- Exclusión aplicada
+          e.estado_actual !== 'Preparando' 
         );
         
         setEntregas(pendientes);
@@ -53,23 +63,18 @@ export const useMisEntregas = () => {
   const entregasFiltradas = useMemo(() => {
     const textoBusqueda = busqueda.toLowerCase().trim();
 
-    // 1. Filtrar
-    let filtradas = entregas.filter((envio) => {
+    const filtradas = entregas.filter((envio) => {
       const direccion = (envio.direccion_destino || "").toLowerCase();
       const track = (envio.numero_seguimiento || "").toLowerCase();
       const ventaId = envio.sale_id.toString();
 
       const coincideBusqueda = 
-        direccion.includes(textoBusqueda) ||
-        track.includes(textoBusqueda) ||
-        ventaId.includes(textoBusqueda);
-
+        direccion.includes(textoBusqueda) || track.includes(textoBusqueda) || ventaId.includes(textoBusqueda);
       const coincideEstado = filtroEstado === "Todos" || envio.estado_actual === filtroEstado;
 
       return coincideBusqueda && coincideEstado;
     });
 
-    // 2. Ordenar por prioridad logística (Preparando ya no debería llegar aquí, pero se mantiene por seguridad)
     const prioridadEstado: Record<string, number> = {
       "En Reparto": 1,
       "En Agencia Destino": 2,
@@ -77,11 +82,7 @@ export const useMisEntregas = () => {
       "Preparando": 4,
     };
 
-    filtradas.sort((a, b) => {
-      const prioridadA = prioridadEstado[a.estado_actual] || 99;
-      const prioridadB = prioridadEstado[b.estado_actual] || 99;
-      return prioridadA - prioridadB;
-    });
+    filtradas.sort((a, b) => (prioridadEstado[a.estado_actual] || 99) - (prioridadEstado[b.estado_actual] || 99));
 
     return filtradas;
   }, [entregas, busqueda, filtroEstado]);
@@ -91,18 +92,31 @@ export const useMisEntregas = () => {
     return ["Todos", ...Array.from(new Set(estados))];
   }, [entregas]);
 
-  const marcarComoEntregado = async (envio: EnvioMotorizado) => {
-    if (!window.confirm(`¿Confirmas la entrega en:\n${envio.direccion_destino}?`)) {
-      return;
-    }
+  // --- ACCIONES DEL MODAL ---
+  const iniciarConfirmacion = (envio: EnvioMotorizado) => {
+    setEnvioAConfirmar(envio);
+  };
 
+  const cancelarConfirmacion = () => {
+    setEnvioAConfirmar(null);
+  };
+
+  const confirmarEntrega = async () => {
+    if (!envioAConfirmar) return;
+
+    const envio = envioAConfirmar;
     setProcesandoId(envio.id);
+    
     try {
       const payload = { ...envio, estado_actual: "Entregado" };
       
       const response = await fetch(`/api/shipments/${envio.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: { 
+          "Content-Type": "application/json", 
+          Accept: "application/json",
+          Authorization: `Bearer ${getToken()}`
+        },
         body: JSON.stringify(payload),
       });
 
@@ -116,6 +130,7 @@ export const useMisEntregas = () => {
       toast.error("Error de conexión. Revisa tus datos móviles.");
     } finally {
       setProcesandoId(null);
+      setEnvioAConfirmar(null); // Cerramos el modal al terminar
     }
   };
 
@@ -129,7 +144,10 @@ export const useMisEntregas = () => {
     setFiltroEstado,
     cargando,
     procesandoId,
-    marcarComoEntregado,
+    envioAConfirmar,
+    iniciarConfirmacion,
+    cancelarConfirmacion,
+    confirmarEntrega,
     refrescar: fetchMisEntregas
   };
 };

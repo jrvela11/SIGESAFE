@@ -1,173 +1,267 @@
 import React from "react";
-import { DashboardLayout } from "./DashboardLayout"; // Ajusta la ruta si es necesario
+import { DashboardLayout } from "./DashboardLayout"; 
 import { useDashboard } from "./useDashboard";
 import { 
-  TrendingUp, Users, Package, ShoppingCart, 
-  RefreshCw, FileText, CreditCard 
+  TrendingUp, Users, Package, RefreshCw, 
+  FileText, Activity, AlertTriangle, Truck
 } from "lucide-react";
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell
+} from 'recharts';
 
 export const DashboardView = () => {
   const d = useDashboard();
 
   const sol = (n: number) =>
-    new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(n);
+    new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(n || 0);
+
+  // Tooltip minimalista
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-2.5 border border-[#EDE8E1] rounded shadow-sm text-[11px]">
+          <p className="font-bold text-[#1C0F05] mb-1.5">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <p key={index} className="font-medium flex items-center gap-1.5" style={{ color: entry.color || entry.payload.color }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color || entry.payload.color }} />
+              {entry.name}: {entry.name === 'Ingresos' || entry.name === 'Egresos' ? sol(entry.value) : entry.value}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 pb-12">
+      <div className="space-y-4 pb-10">
         
-        {/* ── Header y Botón Sincronizar ── */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        {/* ── HEADER ULTRA COMPACTO ── */}
+        <div className="flex justify-between items-center bg-white p-3 rounded-lg border border-[#EDE8E1] shadow-sm">
           <div>
-            <h1 className="text-[20px] font-black text-[#1C0F05] tracking-tight leading-tight">
-              Resumen Operativo
-            </h1>
-            <p className="text-[12.5px] text-[#8B7D72] mt-1">
-              Métricas y rendimiento general del mes actual en SIGESAFE.
-            </p>
+            <h1 className="text-[16px] font-black text-[#1C0F05] leading-none">Resumen Operativo</h1>
+            <p className="text-[11px] text-[#8B7D72] mt-1">Métricas clave en tiempo real.</p>
           </div>
           <button 
             onClick={d.sincronizar}
             disabled={d.cargando}
-            className="flex items-center gap-2 bg-[#F7F5F2] border border-[#EDE8E1] text-[#1C0F05] px-4 py-2 rounded-lg text-[12px] font-bold hover:bg-[#EDE8E1] transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-[#F7F5F2] border border-[#EDE8E1] text-[#1C0F05] px-3 py-1.5 rounded text-[11px] font-bold hover:bg-[#EDE8E1] transition-colors disabled:opacity-50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${d.cargando ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-3 h-3 ${d.cargando ? "animate-spin" : ""}`} />
             Sincronizar
           </button>
         </div>
 
-        {/* ── Tarjetas KPI ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* ── KPIs (Tarjetas reducidas y directas) ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           
-          {/* Ingresos por Ventas */}
-          <div className="bg-white p-5 rounded-xl border border-[#EDE8E1] shadow-sm flex flex-col justify-between">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-9 h-9 rounded-lg bg-[#EDFBF3] flex items-center justify-center text-[#0D7A3E]">
-                <TrendingUp className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-bold text-[#0D7A3E] bg-[#EDFBF3] px-2 py-0.5 rounded-full border border-[#9FE1CB]">
-                Este Mes
-              </span>
+          <div className="bg-white p-3.5 rounded-lg border border-[#EDE8E1] shadow-sm flex flex-col justify-between gap-3">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-bold text-[#7A6E65] uppercase tracking-wider">Ingresos (Mes)</span>
+              <TrendingUp className="w-3.5 h-3.5 text-[#0D7A3E]" />
             </div>
             <div>
-              <h3 className="text-[24px] font-black text-[#1C0F05] tracking-tighter">
-                {d.cargando ? "..." : sol(d.kpis.ventasMes)}
-              </h3>
-              <p className="text-[11.5px] font-medium text-[#9A8E82] mt-0.5">Ingresos por Ventas</p>
+              <h3 className="text-[17px] font-black text-[#1C0F05] leading-none truncate">{d.cargando ? "..." : sol(d.kpis.ventasMes)}</h3>
             </div>
           </div>
 
-          {/* Egresos por Compras */}
-          <div className="bg-white p-5 rounded-xl border border-[#EDE8E1] shadow-sm flex flex-col justify-between">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-9 h-9 rounded-lg bg-[#FCEBEB] flex items-center justify-center text-[#8B2020]">
-                <ShoppingCart className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-bold text-[#8B2020] bg-[#FCEBEB] px-2 py-0.5 rounded-full border border-[#F7C1C1]">
-                Este Mes
-              </span>
+          <div className="bg-white p-3.5 rounded-lg border border-[#EDE8E1] shadow-sm flex flex-col justify-between gap-3 relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 w-16 h-16 bg-[#FDF3E7] rounded-full blur-xl opacity-60" />
+            <div className="flex justify-between items-center relative z-10">
+              <span className="text-[9px] font-bold text-[#7A6E65] uppercase tracking-wider">Margen Neto</span>
+              <Activity className="w-3.5 h-3.5 text-[#C17B2A]" />
             </div>
-            <div>
-              <h3 className="text-[24px] font-black text-[#1C0F05] tracking-tighter">
-                {d.cargando ? "..." : sol(d.kpis.comprasMes)}
+            <div className="relative z-10">
+              <h3 className={`text-[17px] font-black leading-none truncate ${d.kpis.margenOperativo >= 0 ? "text-[#1C0F05]" : "text-[#8B2020]"}`}>
+                {d.cargando ? "..." : sol(d.kpis.margenOperativo)}
               </h3>
-              <p className="text-[11.5px] font-medium text-[#9A8E82] mt-0.5">Inversión en Compras</p>
             </div>
           </div>
 
-          {/* Alertas de Stock */}
-          <div className="bg-white p-5 rounded-xl border border-[#EDE8E1] shadow-sm flex flex-col justify-between border-b-4 border-b-[#C17B2A]">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-9 h-9 rounded-lg bg-[#FDF3E7] flex items-center justify-center text-[#C17B2A]">
-                <Package className="w-4 h-4" />
-              </div>
+          <div className="bg-white p-3.5 rounded-lg border border-[#EDE8E1] shadow-sm flex flex-col justify-between gap-3">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-bold text-[#7A6E65] uppercase tracking-wider">Despachos</span>
+              <Truck className="w-3.5 h-3.5 text-[#5B45C2]" />
             </div>
             <div>
-              <h3 className="text-[24px] font-black text-[#1C0F05] tracking-tighter">
-                {d.cargando ? "..." : d.kpis.productosBajos}
+              <h3 className="text-[17px] font-black text-[#1C0F05] leading-none">
+                {d.cargando ? "..." : d.kpis.enviosEnRuta} <span className="text-[10px] text-[#9A8E82] font-medium">en ruta</span>
               </h3>
-              <p className="text-[11.5px] font-medium text-[#9A8E82] mt-0.5">Productos con Stock Bajo</p>
             </div>
           </div>
 
-          {/* Clientes Activos */}
-          <div className="bg-white p-5 rounded-xl border border-[#EDE8E1] shadow-sm flex flex-col justify-between">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-9 h-9 rounded-lg bg-[#F7F5F2] flex items-center justify-center text-[#5A4A3C]">
-                <Users className="w-4 h-4" />
-              </div>
+          <div className={`bg-white p-3.5 rounded-lg border shadow-sm flex flex-col justify-between gap-3 ${d.kpis.productosBajos > 0 ? "border-[#F7C1C1] border-l-4 border-l-[#8B2020]" : "border-[#EDE8E1]"}`}>
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-bold text-[#7A6E65] uppercase tracking-wider">Stock Bajo</span>
+              {d.kpis.productosBajos > 0 ? <AlertTriangle className="w-3.5 h-3.5 text-[#8B2020]" /> : <Package className="w-3.5 h-3.5 text-[#5A4A3C]" />}
             </div>
             <div>
-              <h3 className="text-[24px] font-black text-[#1C0F05] tracking-tighter">
-                {d.cargando ? "..." : d.kpis.clientesActivos}
+              <h3 className={`text-[17px] font-black leading-none ${d.kpis.productosBajos > 0 ? "text-[#8B2020]" : "text-[#1C0F05]"}`}>
+                {d.cargando ? "..." : d.kpis.productosBajos} <span className="text-[10px] text-[#9A8E82] font-medium">ítems</span>
               </h3>
-              <p className="text-[11.5px] font-medium text-[#9A8E82] mt-0.5">Clientes Registrados</p>
+            </div>
+          </div>
+
+          <div className="bg-white p-3.5 rounded-lg border border-[#EDE8E1] shadow-sm flex flex-col justify-between gap-3">
+            <div className="flex justify-between items-center">
+              <span className="text-[9px] font-bold text-[#7A6E65] uppercase tracking-wider">Cartera</span>
+              <Users className="w-3.5 h-3.5 text-[#1A5FA0]" />
+            </div>
+            <div>
+              <h3 className="text-[17px] font-black text-[#1C0F05] leading-none">
+                {d.cargando ? "..." : d.kpis.clientesActivos} <span className="text-[10px] text-[#9A8E82] font-medium">activos</span>
+              </h3>
+            </div>
+          </div>
+        </div>
+
+        {/* ── ZONA DE GRÁFICOS (Alturas estrictas para evitar colapsos) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          
+          {/* Gráfico Financiero */}
+          <div className="lg:col-span-2 bg-white p-4 rounded-lg border border-[#EDE8E1] shadow-sm flex flex-col h-[280px]">
+            <div className="mb-2 shrink-0">
+              <h3 className="text-[12px] font-black text-[#1C0F05]">Balance Financiero (6 meses)</h3>
+            </div>
+            
+            <div className="flex-1 w-full min-h-0"> {/* min-h-0 es clave en flexbox */}
+              {d.cargando ? (
+                <div className="w-full h-full bg-[#F7F5F2] rounded animate-pulse" />
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={d.datosGrafico} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#F0EBE4" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9A8E82', fontSize: 10 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9A8E82', fontSize: 10 }} tickFormatter={(value) => `S/${value >= 1000 ? (value/1000).toFixed(0) + 'k' : value}`} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: '#FDFAF7' }} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                    <Bar dataKey="Ingresos" fill="#C17B2A" radius={[2, 2, 0, 0]} barSize={10} />
+                    <Bar dataKey="Egresos" fill="#1C0F05" radius={[2, 2, 0, 0]} barSize={10} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Gráfico Circular Logístico */}
+          <div className="bg-white p-4 rounded-lg border border-[#EDE8E1] shadow-sm flex flex-col h-[280px]">
+            <div className="mb-0 shrink-0 text-center">
+              <h3 className="text-[12px] font-black text-[#1C0F05]">Estado Logístico</h3>
+            </div>
+            
+            <div className="flex-1 w-full min-h-0 relative flex items-center justify-center">
+              {d.cargando ? (
+                <div className="w-24 h-24 rounded-full bg-[#F7F5F2] animate-pulse" />
+              ) : d.estadoEnviosGrafico.reduce((a, b) => a + b.value, 0) === 0 ? (
+                <p className="text-[11px] text-[#9A8E82]">Sin despachos.</p>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={d.estadoEnviosGrafico}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={70}
+                        paddingAngle={3}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {d.estadoEnviosGrafico.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend iconType="circle" verticalAlign="bottom" wrapperStyle={{ fontSize: '10px' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Total en el centro absolutamente posicionado */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-6">
+                    <span className="text-[18px] font-black text-[#1C0F05] leading-none">
+                      {d.estadoEnviosGrafico.reduce((a, b) => a + b.value, 0)}
+                    </span>
+                    <span className="text-[8px] text-[#9A8E82] uppercase font-bold mt-0.5">Total</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── ZONA DE TABLAS (Alturas controladas) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          
+          {/* Transacciones Recientes */}
+          <div className="bg-white rounded-lg border border-[#EDE8E1] shadow-sm flex flex-col h-[240px]">
+            <div className="px-3 py-2.5 border-b border-[#EDE8E1] bg-[#FDFAF7] shrink-0">
+              <h3 className="text-[11.5px] font-black text-[#1C0F05] uppercase tracking-wider">Transacciones Recientes</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <table className="w-full text-[11px] text-left">
+                <tbody className="divide-y divide-[#F5F0EB]">
+                  {d.cargando ? (
+                    <tr><td className="px-3 py-4 text-center text-[#9A8E82]">Cargando...</td></tr>
+                  ) : d.actividadReciente.length === 0 ? (
+                    <tr><td className="px-3 py-4 text-center text-[#9A8E82]">Sin transacciones.</td></tr>
+                  ) : (
+                    d.actividadReciente.map((venta, idx) => (
+                      <tr key={idx} className="hover:bg-[#FDFAF7]">
+                        <td className="px-3 py-2.5">
+                          <p className="font-bold text-[#1C0F05]">{venta.tipo_comprobante} {venta.serie}-{venta.correlativo}</p>
+                          <p className="text-[9px] text-[#9A8E82] mt-0.5">{new Date(venta.fecha_venta || venta.created_at).toLocaleDateString("es-PE")}</p>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="font-black text-[#1C0F05] block">{sol(venta.total)}</span>
+                          <span className={`text-[8.5px] font-bold uppercase mt-0.5 block ${venta.estado_pago === 'pagado' ? 'text-[#0D7A3E]' : 'text-[#944F0A]'}`}>
+                            {venta.estado_pago}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Insumos Críticos */}
+          <div className="bg-white rounded-lg border border-[#EDE8E1] shadow-sm flex flex-col h-[240px]">
+            <div className="px-3 py-2.5 border-b border-[#EDE8E1] bg-[#FDFAF7] flex justify-between items-center shrink-0">
+              <h3 className="text-[11.5px] font-black text-[#1C0F05] uppercase tracking-wider">Insumos Críticos</h3>
+              <span className="bg-[#FCEBEB] text-[#8B2020] text-[8.5px] font-bold px-1.5 py-0.5 rounded border border-[#F7C1C1]">Por Agotar</span>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <table className="w-full text-[11px] text-left">
+                <tbody className="divide-y divide-[#F5F0EB]">
+                  {d.cargando ? (
+                    <tr><td className="px-3 py-4 text-center text-[#9A8E82]">Cargando...</td></tr>
+                  ) : d.productosBajosLista.length === 0 ? (
+                    <tr><td className="px-3 py-4 text-center text-[#9A8E82]">Stock óptimo.</td></tr>
+                  ) : (
+                    d.productosBajosLista.map((prod, idx) => (
+                      <tr key={idx} className="hover:bg-[#FDFAF7]">
+                        <td className="px-3 py-2.5">
+                          <p className="font-bold text-[#1C0F05] truncate max-w-[200px]" title={prod.nombre_producto}>{prod.nombre_producto}</p>
+                          <p className="text-[9px] text-[#9A8E82] mt-0.5">Cód: {prod.codigo_producto || 'S/C'}</p>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="font-black text-[#8B2020] block">{prod.stock_actual} ud.</span>
+                          <span className="text-[8.5px] font-bold text-[#9A8E82] mt-0.5 block">
+                            Min: {prod.stock_minimo || 20}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
 
         </div>
-
-        {/* ── Actividad Reciente (Últimas Ventas) ── */}
-        <div className="bg-white rounded-xl border border-[#EDE8E1] shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-[#EDE8E1] bg-[#FDFAF7]">
-            <h3 className="text-[14px] font-black text-[#1C0F05]">Últimas Transacciones (Ventas)</h3>
-            <p className="text-[11px] text-[#9A8E82]">Monitoreo de la actividad de salida más reciente.</p>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-[12.5px] text-left">
-              <thead>
-                <tr className="bg-white border-b border-[#EDE8E1]">
-                  <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-[0.8px] text-[#A8978B]">Comprobante</th>
-                  <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-[0.8px] text-[#A8978B]">Fecha</th>
-                  <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-[0.8px] text-[#A8978B]">Estado</th>
-                  <th className="px-5 py-3 font-bold text-[10px] uppercase tracking-[0.8px] text-[#A8978B] text-right">Monto</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#F5F0EB]">
-                {d.cargando ? (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-8 text-center text-[#9A8E82] text-[12px] font-bold animate-pulse">
-                      Cargando datos...
-                    </td>
-                  </tr>
-                ) : d.actividadReciente.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-5 py-12 text-center">
-                      <FileText className="w-8 h-8 mx-auto mb-2 text-[#C0B4AA]" />
-                      <p className="text-[12px] font-semibold text-[#5A4A3C]">No hay transacciones recientes</p>
-                    </td>
-                  </tr>
-                ) : (
-                  d.actividadReciente.map((venta, idx) => (
-                    <tr key={idx} className="hover:bg-[#FDFAF7] transition-colors">
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-3.5 h-3.5 text-[#C17B2A]" />
-                          <span className="font-bold text-[#1C0F05]">{venta.tipo_comprobante} {venta.serie}-{venta.correlativo}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-[#5A4A3C]">
-                        {new Date(venta.fecha_venta || venta.created_at).toLocaleDateString("es-PE")}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-[0.5px] ${
-                          venta.estado_pago === 'pagado' ? 'bg-[#EDFBF3] text-[#0D6E3F] border border-[#9FE1CB]' : 'bg-[#FEF3E6] text-[#944F0A] border border-[#F5D5A3]'
-                        }`}>
-                          {venta.estado_pago}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-right">
-                        <span className="font-black text-[#1C0F05]">{sol(venta.total)}</span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
       </div>
     </DashboardLayout>
   );

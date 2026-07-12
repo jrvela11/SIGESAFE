@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import type { Producto } from "../dashboard/productos/useProductos";
+import type { Producto } from "../productos/useProductos";
 
 export interface MovimientoKardex {
   id: number;

@@ -3,6 +3,8 @@
 namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserFactory extends Factory
 {
@@ -13,12 +15,12 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'email' => fake()->safeEmail(),
-            'email_verified_at' => fake()->dateTime(),
-            'password' => fake()->password(),
-            'role' => fake()->regexify('[A-Za-z0-9]{50}'),
-            'is_active' => fake()->boolean(),
-            'remember_token' => fake()->uuid(),
+            'email' => fake()->unique()->safeEmail(), // unique() es importante para que no choquen los correos
+            'email_verified_at' => now(),
+            'password' => Hash::make('password'), // Contraseña por defecto para los usuarios aleatorios
+            'role' => fake()->randomElement(['admin', 'vendedor', 'comprador', 'motorizado']),
+            'is_active' => fake()->boolean(90), // 90% de probabilidad de estar activo
+            'remember_token' => Str::random(10),
         ];
     }
 }
