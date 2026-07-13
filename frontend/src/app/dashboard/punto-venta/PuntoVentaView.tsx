@@ -300,9 +300,8 @@ export const PuntoVentaView = () => {
                     value={p.formularioVenta.tipo_comprobante}
                     onChange={(e) => p.handleCambioComprobante(e.target.value)}
                   >
-                    <option value="Boleta">Boleta</option>
-                    <option value="Factura">Factura</option>
-                    <option value="Nota de Venta">Nota de Venta</option>
+                    <option value="03">Boleta</option>
+                    <option value="01">Factura</option>
                   </select>
                 </div>
                 <div className="space-y-1.5">
