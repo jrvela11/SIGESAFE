@@ -1,3 +1,4 @@
+///src/App.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner"; 
 import { DashboardView } from "./app/dashboard/dashboard/DashboardView";

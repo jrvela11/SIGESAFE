@@ -1,3 +1,4 @@
+//src/app/dashboard/ventas/VentasView.tsx
 import React, { useState } from "react";
 import { DashboardLayout } from "../dashboard/DashboardLayout";
 import { useVentas, type VentaHistorial } from "./useVentas";
