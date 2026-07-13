@@ -11,7 +11,7 @@ export default defineConfig({
     proxy: {
       // El puente para las peticiones de datos (JSON)
       '/api': {
-        target: 'http://127.0.0.1:8080', 
+        target: 'http://127.0.0.1:8000', 
         changeOrigin: true,
         headers: {
           Accept: 'application/json',
@@ -19,7 +19,7 @@ export default defineConfig({
       },
       // EL NUEVO PUENTE PARA LAS IMÁGENES
       '^/storage': {
-        target: 'http://127.0.0.1:8080',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       }
     }

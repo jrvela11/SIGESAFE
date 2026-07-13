@@ -38,7 +38,7 @@ export const usePuntoVenta = () => {
   const [formularioVenta, setFormularioVenta] = useState({
     customer_id: "",
     tipo_venta: "minorista",
-    tipo_comprobante: "Boleta",
+    tipo_comprobante: "03",
     serie: "B001",
     metodo_pago: "Efectivo",
     estado_pago: "pagado", 
@@ -209,8 +209,8 @@ export const usePuntoVenta = () => {
       }
 
       const jsonVenta = await resVenta.json();
-      const ventaCreada = jsonVenta.data;
-      
+      const ventaCreada = jsonVenta.sale;
+      console.log('Venta creada:', ventaCreada);
       toast.success(`Venta registrada · ${ventaCreada.tipo_comprobante} ${ventaCreada.serie}-${ventaCreada.correlativo}`);
 
       const nombreMostrar = clienteSeleccionado ? `${clienteSeleccionado.nombre} ${clienteSeleccionado.apellido || ''}`.trim() : "Público General";
@@ -235,7 +235,7 @@ export const usePuntoVenta = () => {
       }
 
     } catch (error) {
-      toast.error("Error al procesar la venta.");
+      toast.error("Error al procesar la venta." + error);
     } finally {
       setProcesando(false);
     }
