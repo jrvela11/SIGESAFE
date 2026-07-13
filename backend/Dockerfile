@@ -28,7 +28,10 @@ COPY . .
 # Instalar dependencias de Laravel
 RUN composer install --optimize-autoloader
 
-# Permisos necesarios para que Laravel pueda escribir archivos
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# --- NUEVO: Crear el enlace simbólico del storage ---
+RUN php artisan storage:link
+
+# Permisos necesarios para que Laravel y Apache puedan escribir y leer archivos
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/public/storage
 
 EXPOSE 80
